@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { t } from "try";
+import { isValidClientId } from "@/app/lib/push/pushPolicy";
+import { verifySendToken } from "@/app/lib/push/sendToken";
 import {
 	getPushSubscriptionByClientId,
 	putPushSubscription,
-	verifySendToken,
 } from "@/app/lib/server/pushKV";
 
 export type SubscribeBody = {
@@ -28,9 +29,7 @@ export const POST = async (request: Request) => {
 	}
 
 	if (
-		typeof body?.clientId !== "string" ||
-		!body.clientId ||
-		body.clientId.length > 128 ||
+		!isValidClientId(body?.clientId) ||
 		typeof body.subscription?.endpoint !== "string"
 	) {
 		return NextResponse.json(
@@ -51,7 +50,10 @@ export const POST = async (request: Request) => {
 	if (existing) {
 		const sameEndpoint =
 			existing.subscription.endpoint === body.subscription.endpoint;
-		const validToken = await verifySendToken(existing, body.token);
+		const validToken = await verifySendToken(
+			existing.tokenHash,
+			body.token,
+		);
 		if (!sameEndpoint && !validToken) {
 			return NextResponse.json(
 				{
@@ -67,6 +69,7 @@ export const POST = async (request: Request) => {
 		body.clientId,
 		body.subscription,
 		existing,
+		new Date(),
 	);
 
 	return NextResponse.json({
