@@ -8,6 +8,25 @@ const urlBase64ToUint8Array = (base64String: string) => {
 	return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 };
 
+const SEND_TOKEN_STORAGE_KEY = "JJ:WEB_PUSH_SEND_TOKEN";
+
+const readSendToken = () => {
+	try {
+		return localStorage.getItem(SEND_TOKEN_STORAGE_KEY);
+	} catch {
+		return null;
+	}
+};
+
+const writeSendToken = (token: string | null) => {
+	try {
+		if (token) localStorage.setItem(SEND_TOKEN_STORAGE_KEY, token);
+		else localStorage.removeItem(SEND_TOKEN_STORAGE_KEY);
+	} catch (error) {
+		console.error("Unable to store push send token", error);
+	}
+};
+
 const savePushSubscription = async (
 	clientId: string,
 	subscription: PushSubscription,
@@ -18,10 +37,16 @@ const savePushSubscription = async (
 		body: JSON.stringify({
 			clientId,
 			subscription: subscription.toJSON(),
+			token: readSendToken() ?? undefined,
 		}),
 	});
 
 	if (!response.ok) throw new Error("Failed to save push subscription.");
+
+	const { token } = await response.json<{ token?: string }>();
+	if (!token) throw new Error("Failed to save push subscription.");
+	writeSendToken(token);
+	return token;
 };
 
 // TODO: iOS Notification and ServiceWorker check need to be investigated further
@@ -80,13 +105,55 @@ export const getPushSubscription = async () => {
 	return registration?.pushManager.getSubscription() ?? null;
 };
 
+/**
+ * Returns this browser's send token. Browsers that subscribed before tokens
+ * existed get one by re-saving their current subscription.
+ */
+const getSendToken = async (clientId: string) => {
+	const token = readSendToken();
+	if (token) return token;
+	const subscription = await getPushSubscription();
+	if (!subscription) return null;
+	return savePushSubscription(clientId, subscription);
+};
+
+export type TestNotification = {
+	title: string;
+	message: string;
+	/** A path on this site, e.g. "/lab/web-push". */
+	url: string;
+};
+
+export const sendPushNotification = async (
+	clientId: string,
+	notification: TestNotification,
+) => {
+	const token = await getSendToken(clientId);
+	if (!token) throw new Error("Enable notifications first.");
+
+	const response = await fetch("/api/push/send", {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ clientId, token, ...notification }),
+	});
+
+	if (response.status === 429) {
+		throw new Error("Too many notifications. Try again in a minute.");
+	}
+	if (!response.ok) {
+		throw new Error("The test notification could not be sent.");
+	}
+};
+
 export const unsubscribeFromPush = async (clientId: string) => {
 	const subscription = await getPushSubscription();
+	const token = await getSendToken(clientId);
 	const response = await fetch("/api/push/unsubscribe", {
 		method: "POST",
 		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ clientId }),
+		body: JSON.stringify({ clientId, token }),
 	});
 	if (!response.ok) throw new Error("Failed to remove push subscription.");
+	writeSendToken(null);
 	if (subscription) await subscription.unsubscribe();
 };

@@ -6,6 +6,7 @@ import { Toggle } from "@/app/components/toggle";
 import { useClientId } from "@/app/hooks/useClientId";
 import {
 	getPushSubscription,
+	sendPushNotification,
 	subscribeToPush,
 	unsubscribeFromPush,
 } from "@/app/lib/push/subscribeToPush";
@@ -77,19 +78,12 @@ export default function WebPushPage() {
 		setStatus("working");
 		setMessage("Sending a test notification…");
 		try {
-			const response = await fetch("/api/push/send", {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					clientId,
-					title: "Web Push Lab",
-					message:
-						"It works — this notification came from the Web Push API.",
-					url: "/lab/web-push",
-				}),
+			await sendPushNotification(clientId, {
+				title: "Web Push Lab",
+				message:
+					"It works — this notification came from the Web Push API.",
+				url: "/lab/web-push",
 			});
-			if (!response.ok)
-				throw new Error("The test notification could not be sent.");
 			setStatus("success");
 			setMessage("Test notification sent.");
 		} catch (error) {
