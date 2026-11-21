@@ -68,6 +68,7 @@ worked, not that production changed; `pnpm exec wrangler deployments list` shows
 - Branches: `type/<issue>-<slug>` or `type/<slug>` (e.g. `fix/push-rate-limit`).
 - PR titles: Conventional Commits, `type(scope): summary (#issue)`.
 - Small commits, one idea each; short messages saying what, why and how it was verified.
+- Update README.md in the same PR when setup, scripts, layout or the deploy flow change.
 - No AI attribution trailers or footers in commits or PRs.
 
 <!-- BEGIN:nextjs-agent-rules -->
