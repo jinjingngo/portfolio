@@ -24,8 +24,10 @@ const fakeBrowser = (
 		const made = {
 			endpoint,
 			unsubscribed: false,
+			failUnsubscribe: false,
 			toJSON: () => ({ endpoint, keys: {} }),
 			unsubscribe: async () => {
+				if (made.failUnsubscribe) throw new Error("unsubscribe failed");
 				made.unsubscribed = true;
 				return true;
 			},
@@ -164,6 +166,20 @@ describe("sendPushNotification", () => {
 		);
 		assert.equal(browser.store.get(TOKEN_KEY), "token-of-new-subscription");
 		assert.equal(replacement?.unsubscribed, false);
+	});
+
+	it("keeps token and toggle when the browser can't drop the expired subscription", async () => {
+		const browser = fakeBrowser({ "/api/push/send": [() => json(410)] });
+		browser.store.set(TOKEN_KEY, "token");
+		browser.subscription.failUnsubscribe = true;
+
+		await assert.rejects(
+			sendPushNotification(CLIENT_ID, NOTIFICATION),
+			(error: Error) =>
+				!(error instanceof PushSubscriptionExpiredError) &&
+				/could not be sent/.test(error.message),
+		);
+		assert.equal(browser.store.get(TOKEN_KEY), "token");
 	});
 
 	it("reports throttling and other failures with their own messages", async () => {

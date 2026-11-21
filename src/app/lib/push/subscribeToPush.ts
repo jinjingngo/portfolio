@@ -180,18 +180,21 @@ export class PushSubscriptionExpiredError extends Error {
  * Drops this browser's dead subscription and token, so later sends don't
  * re-save a subscription the push service has already rejected. Only when the
  * current subscription is still the expired one: another tab may have
- * re-subscribed meanwhile. True when it dropped the expired subscription.
+ * re-subscribed meanwhile. True only when the browser dropped it.
  */
 const forgetExpiredSubscription = async (expiredEndpoint: string | null) => {
 	const [found, , current] = await t(getPushSubscription());
 	if (!found || !current) return false;
 	if (!isSameSubscription(expiredEndpoint, current.endpoint)) return false;
 
-	writeSendToken(null);
-	const [ok, error] = await t(current.unsubscribe());
-	if (!ok || error) {
+	// Token and toggle change only once the browser really dropped it;
+	// otherwise re-enabling would find and re-save the same dead subscription.
+	const [ok, error, dropped] = await t(current.unsubscribe());
+	if (!ok || error || !dropped) {
 		console.error("Unable to drop the expired subscription", error);
+		return false;
 	}
+	writeSendToken(null);
 	return true;
 };
 
