@@ -7,10 +7,12 @@
 import {
 	CACHE_LIMITS,
 	cacheNames,
+	isCacheable,
 	OFFLINE_PATH,
 	obsoleteCaches,
 	offlineUrl,
 	PRECACHE_PATHS,
+	pageToWarm,
 	type Strategy,
 	staticAssetsIn,
 	strategyFor,
@@ -135,20 +137,56 @@ const respond = async (
 	}
 };
 
+/**
+ * Saves a page's HTML for offline use after a client-side navigation to it,
+ * unless this version already has it. Background work: failures only log.
+ */
+const warmPage = async (path: string) => {
+	const cache = await caches.open(CACHES.pages);
+	const request = new Request(path, { credentials: "same-origin" });
+	if (await cache.match(request)) return;
+	const response = await fetch(request);
+	const html = response.headers.get("content-type")?.includes("text/html");
+	if (!html || !isCacheable(responseInfo(response))) return;
+	await cache.put(request, response);
+	await trimCache(cache, CACHE_LIMITS.maxPages);
+};
+
+const responseInfo = (response: Response) => ({
+	status: response.status,
+	type: response.type,
+	cacheControl: response.headers.get("cache-control"),
+	redirected: response.redirected,
+});
+
 self.addEventListener("fetch", (event) => {
 	const { request } = event;
-	const strategy = strategyFor(
-		{
-			method: request.method,
-			url: request.url,
-			mode: request.mode,
-			destination: request.destination,
-			isRsc: request.headers.has("RSC"),
-		},
-		self.location.origin,
-	);
+	const info = {
+		method: request.method,
+		url: request.url,
+		mode: request.mode,
+		destination: request.destination,
+		isRsc: request.headers.has("RSC"),
+	};
+	const strategy = strategyFor(info, self.location.origin);
 	// Network-only: don't intervene at all; the browser handles it as usual.
-	if (strategy.kind === "network-only") return;
+	if (strategy.kind === "network-only") {
+		const page = pageToWarm(
+			{
+				...info,
+				isPrefetch: request.headers.has("Next-Router-Prefetch"),
+			},
+			self.location.origin,
+		);
+		if (page) {
+			event.waitUntil(
+				warmPage(page).catch((error) =>
+					console.warn("Couldn't save page for offline use", error),
+				),
+			);
+		}
+		return;
+	}
 	event.respondWith(respond(strategy, event));
 });
 

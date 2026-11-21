@@ -5,6 +5,7 @@ import {
 	isCacheable,
 	obsoleteCaches,
 	offlineUrl,
+	pageToWarm,
 	type RequestInfo,
 	safeSitePath,
 	staticAssetsIn,
@@ -485,6 +486,40 @@ describe("safeSitePath without URL.canParse (Safari 16, service worker)", () => 
 			assert.equal(safeSitePath("/\\evil.example"), "/");
 		} finally {
 			URL.canParse = original;
+		}
+	});
+});
+
+describe("pageToWarm", () => {
+	const rsc = (
+		path: string,
+		overrides: Partial<RequestInfo & { isPrefetch: boolean }> = {},
+	) => ({
+		...request(path, { isRsc: true, mode: "cors" }),
+		isPrefetch: false,
+		...overrides,
+	});
+
+	it("saves the page behind a client-side navigation, without the _rsc marker", () => {
+		assert.equal(
+			pageToWarm(rsc("/lab/camera-translate?_rsc=abc"), ORIGIN),
+			"/lab/camera-translate",
+		);
+		assert.equal(pageToWarm(rsc("/lab?x=1&_rsc=abc"), ORIGIN), "/lab?x=1");
+	});
+
+	it("ignores prefetches, ordinary requests, page loads, APIs and other origins", () => {
+		for (const info of [
+			rsc("/lab", { isPrefetch: true }),
+			rsc("/lab", { isRsc: false }),
+			rsc("/lab", { mode: "navigate" }),
+			rsc("/lab", { method: "POST" }),
+			rsc("/api/push/public_key"),
+			rsc("/_next/static/chunks/a.js"),
+			rsc("/sw.js"),
+			rsc("https://evil.example/lab"),
+		]) {
+			assert.equal(pageToWarm(info, ORIGIN), null, info.url);
 		}
 	});
 });

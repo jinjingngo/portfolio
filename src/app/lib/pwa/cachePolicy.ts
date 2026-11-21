@@ -179,3 +179,32 @@ const STATIC_ASSET = /(?:src|href)="(\/_next\/static\/[^"?#]+)"/g;
 export const staticAssetsIn = (html: string) => [
 	...new Set([...html.matchAll(STATIC_ASSET)].map((match) => match[1])),
 ];
+
+/**
+ * The page to save for offline use when Next navigates client-side (a
+ * <Link> click fetches an RSC payload, not the page's HTML), or null. Only
+ * real navigations count, not prefetches; the worker then saves the page's
+ * HTML in the background so it opens offline like a page loaded directly.
+ */
+export const pageToWarm = (
+	request: RequestInfo & { isPrefetch: boolean },
+	origin: string,
+) => {
+	if (request.method !== "GET" || !request.isRsc || request.isPrefetch)
+		return null;
+	if (request.mode === "navigate") return null;
+	const url = new URL(request.url);
+	if (url.origin !== origin) return null;
+	const path = url.pathname;
+	if (
+		path.startsWith("/api/") ||
+		path.startsWith("/_next/") ||
+		path.startsWith("/cdn-cgi/") ||
+		ALWAYS_FRESH.has(path)
+	) {
+		return null;
+	}
+	url.searchParams.delete("_rsc");
+	const search = url.searchParams.toString();
+	return search ? `${path}?${search}` : path;
+};
