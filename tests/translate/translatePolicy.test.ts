@@ -18,6 +18,7 @@ import {
 	parseTranslateRequest,
 	quotaDecision,
 	scaleToFit,
+	shouldRetranslate,
 	TRANSLATE_LIMITS,
 	translateWindowStart,
 	utcDay,
@@ -410,5 +411,25 @@ describe("consumeQuota", async () => {
 
 	it("names one quota object per UTC day", () => {
 		assert.equal(quotaObjectName(now), "translate-quota:2026-11-21");
+	});
+});
+
+describe("shouldRetranslate", () => {
+	const base = {
+		hasPhoto: true,
+		settled: true,
+		lastTarget: "en" as const,
+		nextTarget: "sv" as const,
+	};
+
+	it("translates the photo again into a new language", () => {
+		assert.equal(shouldRetranslate(base), true);
+		assert.equal(shouldRetranslate({ ...base, lastTarget: null }), true);
+	});
+
+	it("does nothing without a photo, while busy, or for the same language", () => {
+		assert.equal(shouldRetranslate({ ...base, hasPhoto: false }), false);
+		assert.equal(shouldRetranslate({ ...base, settled: false }), false);
+		assert.equal(shouldRetranslate({ ...base, nextTarget: "en" }), false);
 	});
 });

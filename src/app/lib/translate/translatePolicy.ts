@@ -243,6 +243,18 @@ export const describeAiError = (error: unknown) =>
 		.replace(/data:[^\s"']+/g, "<image>")
 		.slice(0, 300);
 
+/**
+ * Whether picking a new target language should translate the current photo
+ * again: only when there is a photo whose last attempt (shown or failed) was
+ * not already in that language, and nothing is in progress.
+ */
+export const shouldRetranslate = (state: {
+	hasPhoto: boolean;
+	settled: boolean;
+	lastTarget: TargetLanguage | null;
+	nextTarget: TargetLanguage;
+}) => state.hasPhoto && state.settled && state.lastTarget !== state.nextTarget;
+
 /** UTC day (YYYY-MM-DD) for the site-wide daily cap. */
 export const utcDay = (nowMs: number) =>
 	new Date(nowMs).toISOString().slice(0, 10);
