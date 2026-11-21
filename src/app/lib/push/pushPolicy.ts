@@ -75,6 +75,27 @@ export const parseNotification = (
 	return { ok: true, value: { title, body: message, url: path } };
 };
 
+/** What a subscribe request does with the browser's send token. */
+export type TokenAction = "keep" | "issue";
+
+/**
+ * Decides whether a subscribe request may save, and whether the browser keeps
+ * its token or gets a new one. Replacing a stored subscription needs proof it
+ * is the same browser: a valid token, or the same push endpoint (a secret URL
+ * only the browser and its push service know). A valid token is kept, so
+ * re-subscribing never invalidates a token the browser already holds.
+ */
+export const decideSubscribe = (input: {
+	hasExisting: boolean;
+	sameEndpoint: boolean;
+	validToken: boolean;
+}): Decision<TokenAction> => {
+	if (!input.hasExisting) return { ok: true, value: "issue" };
+	if (input.validToken) return { ok: true, value: "keep" };
+	if (input.sameEndpoint) return { ok: true, value: "issue" };
+	return reject("Not allowed to replace this subscription.", 403);
+};
+
 /** Start (epoch ms) of the fixed rate-limit window containing `nowMs`. */
 export const rateWindowStart = (nowMs: number) => {
 	const windowMs = PUSH_LIMITS.windowSeconds * 1000;

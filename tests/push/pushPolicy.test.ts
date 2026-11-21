@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+	decideSubscribe,
 	hasSendQuota,
 	isValidClientId,
 	PUSH_LIMITS,
@@ -102,5 +103,41 @@ describe("rate limit", () => {
 	it("allows sends until the per-window limit", () => {
 		assert.equal(hasSendQuota(PUSH_LIMITS.sendsPerWindow - 1), true);
 		assert.equal(hasSendQuota(PUSH_LIMITS.sendsPerWindow), false);
+	});
+});
+
+describe("decideSubscribe", () => {
+	const decide = (
+		hasExisting: boolean,
+		sameEndpoint: boolean,
+		validToken: boolean,
+	) => decideSubscribe({ hasExisting, sameEndpoint, validToken });
+
+	it("issues a token to a new subscriber", () => {
+		assert.deepEqual(decide(false, false, false), {
+			ok: true,
+			value: "issue",
+		});
+	});
+
+	it("keeps a valid token, so re-subscribing never invalidates it", () => {
+		assert.deepEqual(decide(true, true, true), { ok: true, value: "keep" });
+		assert.deepEqual(decide(true, false, true), {
+			ok: true,
+			value: "keep",
+		});
+	});
+
+	it("issues a fresh token to the same browser with a stale or missing token", () => {
+		assert.deepEqual(decide(true, true, false), {
+			ok: true,
+			value: "issue",
+		});
+	});
+
+	it("rejects a different browser without a valid token", () => {
+		const decision = decide(true, false, false);
+		assert.equal(decision.ok, false);
+		assert.equal(!decision.ok && decision.status, 403);
 	});
 });

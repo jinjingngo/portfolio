@@ -1,3 +1,5 @@
+import { requestWithTokenRetry } from "./tokenRetry";
+
 const urlBase64ToUint8Array = (base64String: string) => {
 	const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
 	const base64 = (base64String + padding)
@@ -117,6 +119,23 @@ const getSendToken = async (clientId: string) => {
 	return savePushSubscription(clientId, subscription);
 };
 
+/**
+ * Replaces a token the server rejected: drops it and re-saves this browser's
+ * subscription, which the server accepts by its push endpoint. Null when there
+ * is no subscription to re-save or the save fails.
+ */
+const refreshSendToken = async (clientId: string) => {
+	const subscription = await getPushSubscription();
+	if (!subscription) return null;
+	writeSendToken(null);
+	try {
+		return await savePushSubscription(clientId, subscription);
+	} catch (error) {
+		console.error("Unable to refresh push send token", error);
+		return null;
+	}
+};
+
 export type TestNotification = {
 	title: string;
 	message: string;
@@ -131,11 +150,20 @@ export const sendPushNotification = async (
 	const token = await getSendToken(clientId);
 	if (!token) throw new Error("Enable notifications first.");
 
-	const response = await fetch("/api/push/send", {
-		method: "POST",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ clientId, token, ...notification }),
-	});
+	const response = await requestWithTokenRetry(
+		token,
+		(currentToken) =>
+			fetch("/api/push/send", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					clientId,
+					token: currentToken,
+					...notification,
+				}),
+			}),
+		() => refreshSendToken(clientId),
+	);
 
 	if (response.status === 429) {
 		throw new Error("Too many notifications. Try again in a minute.");
@@ -148,11 +176,17 @@ export const sendPushNotification = async (
 export const unsubscribeFromPush = async (clientId: string) => {
 	const subscription = await getPushSubscription();
 	const token = await getSendToken(clientId);
-	const response = await fetch("/api/push/unsubscribe", {
-		method: "POST",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ clientId, token }),
-	});
+	const unsubscribe = (currentToken: string | null) =>
+		fetch("/api/push/unsubscribe", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ clientId, token: currentToken }),
+		});
+	const response = token
+		? await requestWithTokenRetry(token, unsubscribe, () =>
+				refreshSendToken(clientId),
+			)
+		: await unsubscribe(null);
 	if (!response.ok) throw new Error("Failed to remove push subscription.");
 	writeSendToken(null);
 	if (subscription) await subscription.unsubscribe();
