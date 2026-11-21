@@ -1,7 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { t } from "try";
 import { hasSendQuota, PUSH_LIMITS, rateWindowStart } from "../push/pushPolicy";
-import { encodeSendToken, hashSendToken } from "../push/sendToken";
+import { hashSendToken } from "../push/sendToken";
 
 const getClientKey = (clientId: string) => `PUSH:CLIENT:${clientId}`;
 const getRateKey = (clientId: string, windowStart: number) =>
@@ -38,18 +38,18 @@ export const getPushSubscriptionByClientId = async (
 };
 
 /**
- * Saves the subscription and issues a fresh send token. Only the token's hash
- * is stored; the plain token is returned once so the browser can keep it.
+ * Saves the subscription with `token` as its send token. Only the token's hash
+ * is stored; the plain token is returned so the browser can keep it.
  */
 export const putPushSubscription = async (
 	clientId: string,
 	subscription: PushSubscriptionJSON,
 	existing: StoredPushSubscription | null,
 	now: Date,
+	token: string,
 ) => {
 	const { env } = await getCloudflareContext();
 	const timestamp = now.toUTCString();
-	const token = encodeSendToken(crypto.getRandomValues(new Uint8Array(32)));
 
 	const value: StoredPushSubscription = {
 		clientId,

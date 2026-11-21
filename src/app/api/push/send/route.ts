@@ -5,7 +5,7 @@ import {
 } from "@pushforge/builder";
 import { NextResponse } from "next/server";
 import { t } from "try";
-import { parseNotification } from "@/app/lib/push/pushPolicy";
+import { deliveryStatus, parseNotification } from "@/app/lib/push/pushPolicy";
 import { verifySendToken } from "@/app/lib/push/sendToken";
 import {
 	consumeSendQuota,
@@ -106,6 +106,6 @@ export const POST = async (request: Request) => {
 		{
 			ok: response.ok,
 		},
-		{ status: response.status },
+		{ status: deliveryStatus(response.status) },
 	);
 };

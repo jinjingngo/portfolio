@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { t } from "try";
-import { isValidClientId } from "@/app/lib/push/pushPolicy";
-import { verifySendToken } from "@/app/lib/push/sendToken";
+import {
+	decideSubscribe,
+	isValidClientId,
+	PUSH_LIMITS,
+} from "@/app/lib/push/pushPolicy";
+import { encodeSendToken, verifySendToken } from "@/app/lib/push/sendToken";
 import {
 	getPushSubscriptionByClientId,
 	putPushSubscription,
@@ -42,27 +46,19 @@ export const POST = async (request: Request) => {
 	}
 
 	const existing = await getPushSubscriptionByClientId(body.clientId);
+	const validToken = await verifySendToken(existing?.tokenHash, body.token);
 
-	// Re-subscribing an existing client must prove it is the same browser:
-	// either the current token, or the same push endpoint (a secret URL only
-	// the browser and its push service know). Otherwise knowing a clientId
-	// would be enough to hijack someone's subscription.
-	if (existing) {
-		const sameEndpoint =
-			existing.subscription.endpoint === body.subscription.endpoint;
-		const validToken = await verifySendToken(
-			existing.tokenHash,
-			body.token,
+	const decision = decideSubscribe({
+		hasExisting: Boolean(existing),
+		sameEndpoint:
+			existing?.subscription.endpoint === body.subscription.endpoint,
+		validToken,
+	});
+	if (!decision.ok) {
+		return NextResponse.json(
+			{ ok: false, error: decision.error },
+			{ status: decision.status },
 		);
-		if (!sameEndpoint && !validToken) {
-			return NextResponse.json(
-				{
-					ok: false,
-					error: "Not allowed to replace this subscription.",
-				},
-				{ status: 403 },
-			);
-		}
 	}
 
 	const { saved, token } = await putPushSubscription(
@@ -70,6 +66,13 @@ export const POST = async (request: Request) => {
 		body.subscription,
 		existing,
 		new Date(),
+		decision.value === "keep" && body.token
+			? body.token
+			: encodeSendToken(
+					crypto.getRandomValues(
+						new Uint8Array(PUSH_LIMITS.sendTokenBytes),
+					),
+				),
 	);
 
 	return NextResponse.json({

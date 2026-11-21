@@ -11,6 +11,8 @@ export const PUSH_LIMITS = Object.freeze({
 	sendsPerWindow: 5,
 	/** Rate-limit window in seconds (KV's minimum TTL is 60s). */
 	windowSeconds: 60,
+	/** Random bytes in a send token (base64url-encoded to 43 characters). */
+	sendTokenBytes: 32,
 });
 
 export type Decision<T> =
@@ -74,6 +76,37 @@ export const parseNotification = (
 
 	return { ok: true, value: { title, body: message, url: path } };
 };
+
+/** What a subscribe request does with the browser's send token. */
+export type TokenAction = "keep" | "issue";
+
+/**
+ * Decides whether a subscribe request may save, and whether the browser keeps
+ * its token or gets a new one. Replacing a stored subscription needs proof it
+ * is the same browser: a valid token, or the same push endpoint (a secret URL
+ * only the browser and its push service know). A valid token is kept, so
+ * re-subscribing never invalidates a token the browser already holds.
+ */
+export const decideSubscribe = (input: {
+	hasExisting: boolean;
+	sameEndpoint: boolean;
+	validToken: boolean;
+}): Decision<TokenAction> => {
+	if (!input.hasExisting) return { ok: true, value: "issue" };
+	if (input.validToken) return { ok: true, value: "keep" };
+	if (input.sameEndpoint) return { ok: true, value: "issue" };
+	return reject("Not allowed to replace this subscription.", 403);
+};
+
+/**
+ * Status the send route returns for the push service's answer. Failures become
+ * 502 so a push-service 401/403 (e.g. a rejected VAPID signature) isn't read
+ * by the browser as its own token being rejected.
+ */
+export const deliveryStatus = (pushServiceStatus: number) =>
+	pushServiceStatus >= 200 && pushServiceStatus < 300
+		? pushServiceStatus
+		: 502;
 
 /** Start (epoch ms) of the fixed rate-limit window containing `nowMs`. */
 export const rateWindowStart = (nowMs: number) => {
