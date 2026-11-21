@@ -215,6 +215,26 @@ describe("sendPushNotification", () => {
 		assert.equal(browser.store.get(TOKEN_KEY), "newer-from-other-tab");
 	});
 
+	it("uses the refreshed token when a 401 retry then finds it expired", async () => {
+		const browser = fakeBrowser({
+			"/api/push/send": [
+				() => json(401),
+				() => {
+					browser.subscription.unsubscribed = true;
+					return gone();
+				},
+			],
+			"/api/push/subscribe": [() => json(200, { token: "fresh" })],
+		});
+		browser.store.set(TOKEN_KEY, "stale");
+
+		await assert.rejects(
+			sendPushNotification(CLIENT_ID, NOTIFICATION),
+			PushSubscriptionExpiredError,
+		);
+		assert.equal(browser.store.has(TOKEN_KEY), false);
+	});
+
 	it("drops nothing when a 410 doesn't name the expired endpoint", async () => {
 		const browser = fakeBrowser({ "/api/push/send": [() => json(410)] });
 		browser.store.set(TOKEN_KEY, "token");
