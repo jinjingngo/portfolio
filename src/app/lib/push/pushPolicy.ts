@@ -108,6 +108,24 @@ export const deliveryStatus = (pushServiceStatus: number) =>
 		? pushServiceStatus
 		: 502;
 
+/**
+ * The push service's host, safe to log. The full endpoint URL is a secret: it
+ * proves ownership when a browser replaces its subscription.
+ */
+export const pushServiceHost = (endpoint: string | undefined) =>
+	endpoint && URL.canParse(endpoint)
+		? new URL(endpoint).host
+		: "invalid-endpoint";
+
+/**
+ * An error as text safe to log: every occurrence of the endpoint is replaced,
+ * since some errors (e.g. "Invalid subscription endpoint: '…'") quote it.
+ */
+export const describeError = (error: unknown, endpoint: string | undefined) => {
+	const text = String(error);
+	return endpoint ? text.replaceAll(endpoint, "<endpoint>") : text;
+};
+
 /** Start (epoch ms) of the fixed rate-limit window containing `nowMs`. */
 export const rateWindowStart = (nowMs: number) => {
 	const windowMs = PUSH_LIMITS.windowSeconds * 1000;
