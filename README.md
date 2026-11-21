@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# portfolio
 
-## Getting Started
+Source of [wujinjing.com](https://wujinjing.com): a personal site with a `/lab` of small
+experiments, such as a Web Push demo at `/lab/web-push`.
 
-First, run the development server:
+Next.js 16 (App Router, React 19, Tailwind CSS 4), built with
+[OpenNext](https://opennext.js.org/cloudflare) and served as a Cloudflare Worker. It is also an
+installable PWA.
+
+## Getting started
+
+Requirements: Node 22.18 or later, and pnpm 12 (the version is pinned in `package.json`).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install --frozen-lockfile
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>. `pnpm dev:https` serves localhost over HTTPS with a self-signed
+certificate trusted only on this machine; other devices must trust it before service workers
+and push work there.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The dev server uses local Cloudflare bindings: push subscriptions live in a local KV under
+`.wrangler/state`, never in production.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+### Web Push locally
 
-## Learn More
+The push demo needs VAPID keys in `.dev.vars` (git-ignored, never commit it). Generate a
+dev-only pair with `pnpm exec pushforge vapid`, then fill in:
 
-To learn more about Next.js, take a look at the following resources:
+```
+VAPID_PUBLIC_KEY="<base64url public key>"
+VAPID_PRIVATE_KEY='<private key as JWK JSON>'
+VAPID_SUBJECT="https://wujinjing.com"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Use a dev-only key pair, not the production keys. Production keys are Cloudflare secrets.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+| Command                       | What it does                                                    |
+| ----------------------------- | --------------------------------------------------------------- |
+| `pnpm dev`                    | Dev server                                                      |
+| `pnpm lint` / `pnpm lint:fix` | Biome lint and format check / fix                               |
+| `pnpm exec tsc --noEmit`      | Typecheck                                                       |
+| `pnpm test`                   | Unit tests (`node:test`, `tests/**/*.test.ts`)                  |
+| `pnpm build`                  | Next.js production build                                        |
+| `pnpm preview`                | OpenNext build, served locally in the Workers runtime           |
+| `pnpm cf:typegen`             | Regenerate `cloudflare-env.d.ts` after editing `wrangler.jsonc` |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project layout
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- `src/app/page.tsx`: home page
+- `src/app/lab/<experiment>/`: experiments; `/lab` lists each folder automatically
+- `src/app/api/push/*`: Web Push API (public key, subscribe, unsubscribe, send)
+- `src/app/lib/`: shared code (pure decisions are tested); `lib/server/` for Cloudflare bindings
+- `tests/`: unit tests
+- `public/`: static files, including the push service worker
+
+## Deploys
+
+Cloudflare Workers Builds builds every push. Merging to `main` deploys production
+(`pnpm run deploy`); other branches upload a preview version (`pnpm run upload`). See
+[AGENTS.md](AGENTS.md) for details and for the working rules used in this repo.
