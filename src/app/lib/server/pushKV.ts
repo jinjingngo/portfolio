@@ -29,8 +29,12 @@ export const getPushSubscriptionByClientId = async (
 		(): StoredPushSubscription => JSON.parse(raw),
 	);
 
+	// No error object in the log: a parse error can quote the record, which
+	// holds the push endpoint (the secret that proves subscription ownership).
 	if (!ok || error) {
-		console.error("[ERROR] Parsing StoredPushSubscription error ", error);
+		console.error("[ERROR] Stored push subscription is not valid JSON", {
+			key,
+		});
 		return null;
 	}
 
