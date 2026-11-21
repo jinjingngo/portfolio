@@ -54,7 +54,7 @@ own daily count, so they spend the shared allowance without counting toward prod
 | ----------------------------- | ------------------------------------------------------------------ |
 | `pnpm dev`                    | Dev server                                                         |
 | `pnpm lint` / `pnpm lint:fix` | Biome lint and format check / fix                                  |
-| `pnpm exec tsc --noEmit`      | Typecheck                                                          |
+| `pnpm typecheck`              | Typecheck the app and the service worker                           |
 | `pnpm test`                   | Unit tests (`node:test`, `tests/**/*.test.ts`)                     |
 | `pnpm build`                  | Next.js production build                                           |
 | `pnpm preview`                | OpenNext build, served locally in the Workers runtime              |
@@ -69,7 +69,8 @@ own daily count, so they spend the shared allowance without counting toward prod
 - `src/app/api/translate/image`: camera translate API (Workers AI)
 - `src/app/lib/`: shared code (pure decisions are tested); `lib/server/` for Cloudflare bindings
 - `tests/`: unit tests
-- `public/`: static files, including the push service worker
+- `src/sw/`: the service worker (TypeScript), built to `public/sw.js` by `pnpm build:sw`
+- `public/`: static files
 
 ## Deploys
 
