@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { t } from "try";
 import {
 	deliveryStatus,
+	describeError,
 	parseNotification,
 	pushServiceHost,
 } from "@/app/lib/push/pushPolicy";
@@ -86,7 +87,7 @@ export const POST = async (request: Request) => {
 	if (!built || buildError) {
 		console.error("[ERROR] Building push request failed", {
 			pushService: pushServiceHost(stored.subscription.endpoint),
-			error: String(buildError),
+			error: describeError(buildError, stored.subscription.endpoint),
 		});
 		return fail("The notification could not be sent.", 502);
 	}
@@ -101,7 +102,7 @@ export const POST = async (request: Request) => {
 	if (!sent || sendError) {
 		console.error("[ERROR] Push service unreachable", {
 			pushService: pushServiceHost(pushRequest.endpoint),
-			error: String(sendError),
+			error: describeError(sendError, pushRequest.endpoint),
 		});
 		return fail("The notification could not be sent.", 502);
 	}
@@ -112,7 +113,7 @@ export const POST = async (request: Request) => {
 
 	if (!response.ok) {
 		const responseHeaders = Object.fromEntries(response.headers.entries());
-		const responseText = await response.text();
+		const [, , responseText] = await t(response.text());
 
 		console.error("[ERROR] Push delivery failed ", {
 			pushService: pushServiceHost(pushRequest.endpoint),

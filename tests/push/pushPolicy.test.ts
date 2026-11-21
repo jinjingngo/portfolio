@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
 	decideSubscribe,
 	deliveryStatus,
+	describeError,
 	hasSendQuota,
 	isValidClientId,
 	PUSH_LIMITS,
@@ -169,5 +170,29 @@ describe("pushServiceHost", () => {
 			pushServiceHost("not a url secret-ish"),
 			"invalid-endpoint",
 		);
+	});
+});
+
+describe("describeError", () => {
+	const endpoint = "SECRET-endpoint-value";
+
+	it("replaces the endpoint wherever an error quotes it", () => {
+		const error = new Error(
+			`Invalid subscription endpoint: '${endpoint}' is not a valid URL ${endpoint}`,
+		);
+		const text = describeError(error, endpoint);
+		assert.equal(text.includes(endpoint), false);
+		assert.equal(
+			text,
+			"Error: Invalid subscription endpoint: '<endpoint>' is not a valid URL <endpoint>",
+		);
+	});
+
+	it("keeps errors that don't mention the endpoint", () => {
+		assert.equal(
+			describeError(new Error("Invalid JWK: missing 'd'"), endpoint),
+			"Error: Invalid JWK: missing 'd'",
+		);
+		assert.equal(describeError("plain", undefined), "plain");
 	});
 });
