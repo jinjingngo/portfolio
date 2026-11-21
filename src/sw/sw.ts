@@ -4,6 +4,12 @@
  * cacheStrategies).
  */
 
+import { t } from "try";
+import {
+	applyBadge,
+	type BadgeNavigator,
+	badgeFor,
+} from "../app/lib/pwa/appBadge";
 import {
 	CACHE_LIMITS,
 	cacheNames,
@@ -24,6 +30,16 @@ import {
 	staleWhileRevalidate,
 	trimCache,
 } from "../app/lib/pwa/cacheStrategies";
+import { readLimited } from "../app/lib/pwa/readLimited";
+import {
+	checkSharedPhoto,
+	isShareTargetRequest,
+	SHARE_LIMITS,
+	SHARE_TARGET_FIELD,
+	SHARED_PHOTO_KEY,
+	type ShareOutcome,
+	shareRedirectPath,
+} from "../app/lib/pwa/shareTarget";
 import {
 	GET_VERSION,
 	NOTIFICATION_ICON,
@@ -160,8 +176,51 @@ const responseInfo = (response: Response) => ({
 	redirected: response.redirected,
 });
 
+/**
+ * A photo shared into the app (Web Share Target): kept in its own cache
+ * until Camera Translate picks it up, then the visitor is sent there.
+ */
+const receiveShare = async (request: Request) => {
+	// Any site can post here: read at most the limit, never the whole body.
+	const [bounded, , body] = await t(
+		readLimited(request.body, SHARE_LIMITS.maxBodyBytes),
+	);
+	if (!bounded || !body) return shareRedirect("invalid");
+	const [read, , form] = await t(
+		new Response(body, {
+			headers: {
+				"content-type": request.headers.get("content-type") ?? "",
+			},
+		}).formData(),
+	);
+	const entry = read ? form.get(SHARE_TARGET_FIELD) : null;
+	const photo = entry instanceof File ? entry : null;
+	const check = checkSharedPhoto(photo);
+	if (!check.ok || !photo) return shareRedirect("invalid");
+	const [saved, error] = await t(async () => {
+		const cache = await caches.open(CACHES.share);
+		await cache.put(
+			SHARED_PHOTO_KEY,
+			new Response(photo, { headers: { "content-type": photo.type } }),
+		);
+	});
+	if (!saved) console.warn("Couldn't keep the shared photo", error);
+	return shareRedirect(saved ? "ready" : "unavailable");
+};
+
+/** 303: the browser follows the POST with a GET of the page. */
+const shareRedirect = (outcome: ShareOutcome) =>
+	Response.redirect(
+		new URL(shareRedirectPath(outcome), self.location.origin),
+		303,
+	);
+
 self.addEventListener("fetch", (event) => {
 	const { request } = event;
+	if (isShareTargetRequest(request, self.location.origin)) {
+		event.respondWith(receiveShare(request));
+		return;
+	}
 	const strategy = strategyFor(
 		{
 			method: request.method,
@@ -207,18 +266,35 @@ self.addEventListener("push", (event) => {
 	})();
 	const { title, body, url } = notificationFromPush(payload);
 	event.waitUntil(
-		self.registration.showNotification(title, {
-			body,
-			data: { url },
-			icon: NOTIFICATION_ICON,
-			badge: NOTIFICATION_ICON,
-		}),
+		(async () => {
+			await self.registration.showNotification(title, {
+				body,
+				data: { url },
+				icon: NOTIFICATION_ICON,
+				badge: NOTIFICATION_ICON,
+			});
+			await updateBadge();
+		})(),
 	);
 });
+
+// A swiped-away notification lowers the count (unlike a click, it doesn't open the app).
+self.addEventListener("notificationclose", (event) => {
+	event.waitUntil(updateBadge());
+});
+
+/** Badges the app icon with the number of notifications still showing. */
+const updateBadge = async () => {
+	const [listed, , shown] = await t(self.registration.getNotifications());
+	if (!listed) return;
+	await applyBadge(self.navigator as BadgeNavigator, badgeFor(shown.length));
+};
 
 self.addEventListener("notificationclick", (event) => {
 	event.notification.close();
 	const url = safeNotificationPath(event.notification.data?.url);
+	// No badge update here: the click opens the app, which clears the badge
+	// (AppBadgeClearer); setting it here could race and bring it back.
 	event.waitUntil(
 		(async () => {
 			// Only windows this worker controls can be navigated; focus first,

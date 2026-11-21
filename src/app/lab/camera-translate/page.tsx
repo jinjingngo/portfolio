@@ -5,6 +5,13 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useClientId } from "@/app/hooks/useClientId";
 import { useOnline } from "@/app/hooks/useOnline";
 import { useReadAloud } from "@/app/hooks/useReadAloud";
+import { useShareText } from "@/app/hooks/useShareText";
+import { takeSharedPhoto } from "@/app/lib/pwa/sharedPhoto";
+import {
+	SHARE_MESSAGES,
+	SHARE_PAGE_PATH,
+	shareOutcomeOf,
+} from "@/app/lib/pwa/shareTarget";
 import {
 	loadImageFile,
 	readLastTarget,
@@ -12,6 +19,7 @@ import {
 	toJpegDataUri,
 	writeLastTarget,
 } from "@/app/lib/translate/cameraTranslate";
+import { translationShareText } from "@/app/lib/translate/shareTranslation";
 import { playAllOrder } from "@/app/lib/translate/speechPolicy";
 import {
 	defaultTargetLanguage,
@@ -22,7 +30,8 @@ import {
 	type Translation,
 } from "@/app/lib/translate/translatePolicy";
 
-type Step = "idle" | "camera" | "translating" | "result" | "error";
+/** `shared`: a photo shared into the app, shown until the visitor taps Translate. */
+type Step = "idle" | "camera" | "translating" | "shared" | "result" | "error";
 
 const buttonClass =
 	"rounded-full px-5 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gray-300 disabled:cursor-not-allowed disabled:opacity-40";
@@ -62,6 +71,9 @@ export default function CameraTranslatePage() {
 	const openingRef = useRef(false);
 	/** Id of the latest translation request; older answers are ignored. */
 	const requestRef = useRef(0);
+	/** A shared photo (`?shared=`) has been handled. */
+	const sharedRef = useRef(false);
+	const shareText = useShareText();
 
 	const [step, setStep] = useState<Step>("idle");
 	const [error, setError] = useState("");
@@ -131,6 +143,9 @@ export default function CameraTranslatePage() {
 			video.srcObject = stream;
 			await video.play();
 		} catch {
+			// Leaving an unconfirmed shared photo: drop it, so nothing (e.g. a
+			// language change) translates it without the Translate tap.
+			if (step === "shared") setPhoto(null);
 			fail(
 				"Camera access was blocked. Allow it in your browser, or choose a photo instead.",
 			);
@@ -151,6 +166,7 @@ export default function CameraTranslatePage() {
 		setPhoto(image);
 		setResult(null);
 		setShownOriginals(new Set());
+		shareText.clearNote();
 		setStep("translating");
 		try {
 			const translation = await requestTranslation(
@@ -179,19 +195,37 @@ export default function CameraTranslatePage() {
 		translate(image);
 	};
 
-	const pickFile = async (event: ChangeEvent<HTMLInputElement>) => {
+	const pickFile = (event: ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		event.target.value = "";
 		if (!file) return;
+		openPhoto(file, "translate");
+	};
+
+	/**
+	 * Scales a picked or shared photo down, then translates it, or for a shared
+	 * photo only shows it: any site can post to the share target, so translating
+	 * (which spends the quota) waits for a tap.
+	 */
+	const openPhoto = async (file: Blob, then: "translate" | "show") => {
 		// Busy while the new photo loads: the language picker is disabled and any
 		// translation still in flight for the previous photo is ignored.
 		requestRef.current++;
 		setStep("translating");
 		try {
 			const image = await loadImageFile(file);
-			translate(
-				toJpegDataUri(image, image.naturalWidth, image.naturalHeight),
+			const scaled = toJpegDataUri(
+				image,
+				image.naturalWidth,
+				image.naturalHeight,
 			);
+			if (then === "translate") {
+				translate(scaled);
+				return;
+			}
+			setPhoto(scaled);
+			setResult(null);
+			setStep("shared");
 		} catch (reason) {
 			fail(
 				reason instanceof Error
@@ -200,6 +234,29 @@ export default function CameraTranslatePage() {
 			);
 		}
 	};
+
+	// A photo shared into the app (the manifest's share_target) is shown once,
+	// after the client id and target language have loaded.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs once per share, when the client id is ready
+	useEffect(() => {
+		if (!clientId || sharedRef.current) return;
+		const outcome = shareOutcomeOf(window.location.search);
+		if (!outcome) return;
+		sharedRef.current = true;
+		window.history.replaceState(null, "", SHARE_PAGE_PATH);
+		if (outcome !== "ready") {
+			fail(SHARE_MESSAGES[outcome]);
+			return;
+		}
+		// Busy until it loads, so a photo picked meanwhile isn't replaced by it.
+		requestRef.current++;
+		setStep("translating");
+		takeSharedPhoto().then((shared) =>
+			shared
+				? openPhoto(shared, "show")
+				: fail(SHARE_MESSAGES.unavailable),
+		);
+	}, [clientId]);
 
 	const chooseTarget = (code: string) => {
 		if (!isTargetLanguage(code)) return;
@@ -308,9 +365,11 @@ export default function CameraTranslatePage() {
 					<p aria-live="polite" className="sr-only">
 						{step === "translating"
 							? "Reading and translating."
-							: step === "result" && result
-								? `Detected ${nameOf(result.sourceLanguage)}, ${result.blocks.length} lines translated into ${nameOf(result.target)}.`
-								: ""}
+							: step === "shared"
+								? "Shared photo ready. Tap Translate to read it."
+								: step === "result" && result
+									? `Detected ${nameOf(result.sourceLanguage)}, ${result.blocks.length} lines translated into ${nameOf(result.target)}.`
+									: ""}
 					</p>
 					{step === "result" && result && (
 						<div className="flex flex-col gap-3">
@@ -440,9 +499,48 @@ export default function CameraTranslatePage() {
 											</li>
 										))}
 									</ul>
+									{shareText.method && (
+										<div className="flex flex-wrap items-center gap-3">
+											<button
+												type="button"
+												onClick={() =>
+													shareText.share(
+														translationShareText(
+															result.blocks,
+															{
+																source: nameOf(
+																	result.sourceLanguage,
+																),
+																target: nameOf(
+																	result.target,
+																),
+															},
+														),
+													)
+												}
+												className={secondary}
+											>
+												{shareText.method === "share"
+													? "Share translation"
+													: "Copy translation"}
+											</button>
+											<span
+												aria-live="polite"
+												className="text-sm text-gray-600"
+											>
+												{shareText.note}
+											</span>
+										</div>
+									)}
 								</>
 							)}
 						</div>
+					)}
+					{step === "shared" && (
+						<p className="text-sm text-gray-600">
+							Shared photo ready. Tap Translate to read it in{" "}
+							{nameOf(target)}.
+						</p>
 					)}
 					{step === "error" && (
 						<p aria-live="polite" className="text-sm text-red-700">
@@ -470,6 +568,18 @@ export default function CameraTranslatePage() {
 							</>
 						) : (
 							<>
+								{step === "shared" && photo && (
+									<button
+										type="button"
+										onClick={() => translate(photo)}
+										disabled={
+											!clientId || !online || opening
+										}
+										className={primary}
+									>
+										Translate
+									</button>
+								)}
 								<button
 									type="button"
 									onClick={startCamera}
@@ -479,7 +589,9 @@ export default function CameraTranslatePage() {
 										!clientId ||
 										!online
 									}
-									className={primary}
+									className={
+										step === "shared" ? secondary : primary
+									}
 								>
 									{photo ? "Retake" : "Open camera"}
 								</button>

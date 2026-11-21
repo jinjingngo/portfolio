@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { SHARE_TARGET_FIELD, SHARE_TARGET_PATH } from "./lib/pwa/shareTarget";
 
 /** Icon for the app shortcuts (long-press / right-click on the app icon). */
 const SHORTCUT_ICONS = [
@@ -69,6 +70,15 @@ export default function (): MetadataRoute.Manifest {
 				label: "The lab",
 			},
 		],
+		// Share a photo from the gallery into Camera Translate (Android, installed).
+		share_target: {
+			action: SHARE_TARGET_PATH,
+			method: "POST",
+			enctype: "multipart/form-data",
+			params: {
+				files: [{ name: SHARE_TARGET_FIELD, accept: ["image/*"] }],
+			},
+		},
 		shortcuts: [
 			{
 				name: "Camera Translate",

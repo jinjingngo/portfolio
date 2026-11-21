@@ -35,8 +35,8 @@ export const toJpegDataUri = (
 	return canvas.toDataURL("image/jpeg", TRANSLATE_LIMITS.jpegQuality);
 };
 
-/** Loads a picked file into an image element. */
-export const loadImageFile = (file: File) =>
+/** Loads a picked or shared photo into an image element. */
+export const loadImageFile = (file: Blob) =>
 	new Promise<HTMLImageElement>((resolve, reject) => {
 		const url = URL.createObjectURL(file);
 		const image = new Image();
