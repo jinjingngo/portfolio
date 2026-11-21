@@ -265,6 +265,11 @@ self.addEventListener("push", (event) => {
 	);
 });
 
+// A swiped-away notification lowers the count (unlike a click, it doesn't open the app).
+self.addEventListener("notificationclose", (event) => {
+	event.waitUntil(updateBadge());
+});
+
 /** Badges the app icon with the number of notifications still showing. */
 const updateBadge = async () => {
 	const [listed, , shown] = await t(self.registration.getNotifications());

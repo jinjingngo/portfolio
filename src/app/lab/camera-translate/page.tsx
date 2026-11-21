@@ -113,6 +113,9 @@ export default function CameraTranslatePage() {
 
 	const fail = (message: string) => {
 		stopCamera();
+		// An unconfirmed shared photo is dropped, so nothing (e.g. a language
+		// change) translates it without the Translate tap.
+		if (step === "shared") setPhoto(null);
 		setError(message);
 		setStep("error");
 	};
@@ -163,6 +166,7 @@ export default function CameraTranslatePage() {
 		setPhoto(image);
 		setResult(null);
 		setShownOriginals(new Set());
+		shareText.clearNote();
 		setStep("translating");
 		try {
 			const translation = await requestTranslation(
@@ -361,9 +365,11 @@ export default function CameraTranslatePage() {
 					<p aria-live="polite" className="sr-only">
 						{step === "translating"
 							? "Reading and translating."
-							: step === "result" && result
-								? `Detected ${nameOf(result.sourceLanguage)}, ${result.blocks.length} lines translated into ${nameOf(result.target)}.`
-								: ""}
+							: step === "shared"
+								? "Shared photo ready. Tap Translate to read it."
+								: step === "result" && result
+									? `Detected ${nameOf(result.sourceLanguage)}, ${result.blocks.length} lines translated into ${nameOf(result.target)}.`
+									: ""}
 					</p>
 					{step === "result" && result && (
 						<div className="flex flex-col gap-3">
@@ -531,7 +537,7 @@ export default function CameraTranslatePage() {
 						</div>
 					)}
 					{step === "shared" && (
-						<p aria-live="polite" className="text-sm text-gray-600">
+						<p className="text-sm text-gray-600">
 							Shared photo ready. Tap Translate to read it in{" "}
 							{nameOf(target)}.
 						</p>
@@ -566,7 +572,9 @@ export default function CameraTranslatePage() {
 									<button
 										type="button"
 										onClick={() => translate(photo)}
-										disabled={!clientId || !online}
+										disabled={
+											!clientId || !online || opening
+										}
 										className={primary}
 									>
 										Translate

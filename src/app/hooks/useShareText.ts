@@ -41,5 +41,7 @@ export const useShareText = () => {
 		);
 	};
 
-	return { method, share, note };
+	const clearNote = () => setNote("");
+
+	return { method, share, note, clearNote };
 };

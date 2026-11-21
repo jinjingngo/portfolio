@@ -45,9 +45,13 @@ describe("shareMethodFor", () => {
 });
 
 describe("isShareCancelled", () => {
-	it("is true only when the visitor closed the share sheet", () => {
+	it("is true when the sheet was closed or is already open", () => {
 		assert.equal(
 			isShareCancelled(new DOMException("closed", "AbortError")),
+			true,
+		);
+		assert.equal(
+			isShareCancelled(new DOMException("busy", "InvalidStateError")),
 			true,
 		);
 		assert.equal(

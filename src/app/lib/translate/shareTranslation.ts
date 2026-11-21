@@ -30,6 +30,11 @@ export const shareMethodFor = (env: {
 	return null;
 };
 
-/** Whether a failed `navigator.share` was the visitor closing the sheet. */
+/**
+ * Whether a failed `navigator.share` needs no fallback: the visitor closed the
+ * sheet (AbortError), or a sheet is already open (InvalidStateError, e.g. a
+ * double tap). Copying then would claim "Copied" for a share in progress.
+ */
 export const isShareCancelled = (error: unknown) =>
-	error instanceof Error && error.name === "AbortError";
+	error instanceof Error &&
+	(error.name === "AbortError" || error.name === "InvalidStateError");
