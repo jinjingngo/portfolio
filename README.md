@@ -25,7 +25,8 @@ certificate ("CA Root certificate created in …").
 
 Production builds install a service worker (`src/sw/`): pages you've visited open offline,
 others show `/offline`, and a new deploy offers "A new version is available · Reload". Test it
-with `pnpm preview` in real Chrome or Safari.
+with `pnpm preview` in real Chrome or Safari. Browsers that can install the site show "Install
+app" in the navbar; iPhone and iPad show a one-time "Add to Home Screen" hint.
 
 The dev server uses local Cloudflare bindings: push subscriptions live in a local KV under
 `.wrangler/state`, never in production.

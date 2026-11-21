@@ -1,4 +1,5 @@
 import { t } from "try";
+import { readDevice } from "../pwa/readDevice";
 import { registerServiceWorker } from "../pwa/registerServiceWorker";
 import {
 	classifySendStatus,
@@ -64,12 +65,7 @@ const readPushEnvironment = (): PushEnvironment => ({
 	hasNotification: "Notification" in window,
 	hasServiceWorker: "serviceWorker" in navigator,
 	hasPushManager: "PushManager" in window,
-	isAppleMobile:
-		/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-		(navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1),
-	isStandalone:
-		window.matchMedia?.("(display-mode: standalone)").matches === true ||
-		(navigator as { standalone?: boolean }).standalone === true,
+	...readDevice(),
 });
 
 /** Why web push can't be used in this browser, or null when it can. */
