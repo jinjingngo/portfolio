@@ -20,12 +20,12 @@ OpenNext and served as a Cloudflare Worker (`wrangler.jsonc`).
 Package manager is pnpm 12 (`pnpm install --frozen-lockfile`). Dependencies allowed to
 run install scripts are listed under `allowBuilds` in `pnpm-workspace.yaml`.
 
-| Task | Command |
-| --- | --- |
-| Lint + format check | `npx biome check` (fix: `npm run lint:fix`) |
-| Typecheck | `npx tsc --noEmit` |
-| Tests | `npm test` (node:test over `tests/**/*.test.ts`) |
-| Dev server | `npm run dev` |
+| Task                     | Command                                               |
+| ------------------------ | ----------------------------------------------------- |
+| Lint + format check      | `npx biome check` (fix: `npm run lint:fix`)           |
+| Typecheck                | `npx tsc --noEmit`                                    |
+| Tests                    | `npm test` (node:test over `tests/**/*.test.ts`)      |
+| Dev server               | `npm run dev`                                         |
 | Regenerate binding types | `npm run cf:typegen` (after editing `wrangler.jsonc`) |
 
 Run lint, typecheck and tests before every commit. `next build` needs Cloudflare credentials
@@ -60,7 +60,7 @@ preview URL of the PR instead.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
