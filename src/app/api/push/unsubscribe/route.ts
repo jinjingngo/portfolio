@@ -13,7 +13,7 @@ export const POST = async (request: Request) => {
 	const [ok, error, body] = await t(request.json<UnsubscribeBody>());
 
 	if (!ok || error) {
-		console.error("ERROR: parsing unsubscribe payload", error);
+		console.error("[ERROR] Unsubscribe body is not valid JSON");
 		return NextResponse.json(
 			{
 				ok: false,

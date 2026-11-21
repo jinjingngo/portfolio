@@ -22,7 +22,7 @@ export const POST = async (request: Request) => {
 	const [ok, error, body] = await t(request.json<SubscribeBody>());
 
 	if (!ok || error) {
-		console.error("ERROR: parsing subscription payload", error);
+		console.error("[ERROR] Subscribe body is not valid JSON");
 		return NextResponse.json(
 			{
 				ok: false,
