@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useClientId } from "@/app/hooks/useClientId";
+import { useReadAloud } from "@/app/hooks/useReadAloud";
 import {
 	loadImageFile,
 	readLastTarget,
@@ -10,6 +11,7 @@ import {
 	toJpegDataUri,
 	writeLastTarget,
 } from "@/app/lib/translate/cameraTranslate";
+import { playAllOrder } from "@/app/lib/translate/speechPolicy";
 import {
 	defaultTargetLanguage,
 	isTargetLanguage,
@@ -69,6 +71,9 @@ export default function CameraTranslatePage() {
 	const [opening, setOpening] = useState(false);
 	/** Language of the last translation attempt, shown or failed. */
 	const [lastTarget, setLastTarget] = useState<TargetLanguage | null>(null);
+	const readAloud = useReadAloud(
+		step === "result" ? (result?.sourceLanguage ?? null) : null,
+	);
 	const [shownOriginals, setShownOriginals] = useState<Set<number>>(
 		new Set(),
 	);
@@ -139,6 +144,7 @@ export default function CameraTranslatePage() {
 	) => {
 		if (!clientId) return;
 		const requestId = ++requestRef.current;
+		readAloud.stop();
 		setLastTarget(targetLanguage);
 		setPhoto(image);
 		setResult(null);
@@ -215,6 +221,7 @@ export default function CameraTranslatePage() {
 		});
 
 	const reset = () => {
+		readAloud.stop();
 		stopCamera();
 		setPhoto(null);
 		setResult(null);
@@ -310,10 +317,100 @@ export default function CameraTranslatePage() {
 										→ {nameOf(result.target)}. Tap a line to
 										see the original.
 									</p>
+									{readAloud.supported &&
+										readAloud.voicesLoaded &&
+										!readAloud.voice && (
+											<p className="text-sm text-gray-500">
+												No voice for{" "}
+												{nameOf(result.sourceLanguage)}{" "}
+												on this device, so it can't be
+												read aloud.
+											</p>
+										)}
+									{readAloud.voice && (
+										<div className="flex flex-wrap items-center gap-3">
+											{readAloud.playing === null ? (
+												<button
+													type="button"
+													onClick={() =>
+														readAloud.play(
+															playAllOrder(
+																result.blocks,
+															).map((index) => ({
+																index,
+																text: result
+																	.blocks[
+																	index
+																].text,
+															})),
+														)
+													}
+													className={secondary}
+												>
+													▶ Play all
+												</button>
+											) : (
+												<button
+													type="button"
+													onClick={readAloud.stop}
+													className={secondary}
+												>
+													■ Stop
+												</button>
+											)}
+											<label className="flex items-center gap-2 text-sm text-gray-700">
+												<input
+													type="checkbox"
+													checked={readAloud.slow}
+													onChange={(event) =>
+														readAloud.setSlow(
+															event.target
+																.checked,
+														)
+													}
+													className="h-4 w-4"
+												/>
+												Slow
+											</label>
+										</div>
+									)}
 									<ul className="flex flex-col divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
 										{result.blocks.map((block, index) => (
-											// biome-ignore lint/suspicious/noArrayIndexKey: one fixed list per result, never reordered
-											<li key={index}>
+											<li
+												// biome-ignore lint/suspicious/noArrayIndexKey: one fixed list per result, never reordered
+												key={index}
+												className={`flex items-stretch ${readAloud.playing === index ? "bg-amber-50" : ""}`}
+											>
+												{readAloud.voice && (
+													<button
+														type="button"
+														onClick={() =>
+															readAloud.playing ===
+															index
+																? readAloud.stop()
+																: readAloud.play(
+																		[
+																			{
+																				index,
+																				text: block.text,
+																			},
+																		],
+																	)
+														}
+														aria-label={
+															readAloud.playing ===
+															index
+																? "Stop reading"
+																: `Read aloud: ${block.text}`
+														}
+														className="flex w-12 shrink-0 items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+													>
+														{readAloud.playing ===
+														index
+															? "■"
+															: "▶"}
+													</button>
+												)}
 												<button
 													type="button"
 													onClick={() =>
