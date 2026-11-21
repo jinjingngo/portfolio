@@ -56,6 +56,8 @@ export default function CameraTranslatePage() {
 	const cameraFileRef = useRef<HTMLInputElement>(null);
 	const mountedRef = useRef(false);
 	const openingRef = useRef(false);
+	/** Id of the latest translation request; older answers are ignored. */
+	const requestRef = useRef(0);
 
 	const [step, setStep] = useState<Step>("idle");
 	const [error, setError] = useState("");
@@ -136,6 +138,7 @@ export default function CameraTranslatePage() {
 		targetLanguage: TargetLanguage = target,
 	) => {
 		if (!clientId) return;
+		const requestId = ++requestRef.current;
 		setLastTarget(targetLanguage);
 		setPhoto(image);
 		setResult(null);
@@ -147,9 +150,11 @@ export default function CameraTranslatePage() {
 				image,
 				targetLanguage,
 			);
+			if (requestId !== requestRef.current) return;
 			setResult({ ...translation, target: targetLanguage });
 			setStep("result");
 		} catch (reason) {
+			if (requestId !== requestRef.current) return;
 			fail(
 				reason instanceof Error
 					? reason.message
@@ -190,7 +195,7 @@ export default function CameraTranslatePage() {
 		writeLastTarget(code);
 		const again = shouldRetranslate({
 			hasPhoto: photo !== null,
-			settled: step === "result" || step === "error",
+			settled: !opening && (step === "result" || step === "error"),
 			lastTarget,
 			nextTarget: code,
 		});
@@ -240,7 +245,7 @@ export default function CameraTranslatePage() {
 							onChange={(event) =>
 								chooseTarget(event.target.value)
 							}
-							disabled={step === "translating"}
+							disabled={step === "translating" || opening}
 							className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
 						>
 							{TARGET_LANGUAGES.map((code) => (
@@ -280,8 +285,15 @@ export default function CameraTranslatePage() {
 						)}
 					</div>
 
+					<p aria-live="polite" className="sr-only">
+						{step === "translating"
+							? "Reading and translating."
+							: step === "result" && result
+								? `Detected ${nameOf(result.sourceLanguage)}, ${result.blocks.length} lines translated into ${nameOf(result.target)}.`
+								: ""}
+					</p>
 					{step === "result" && result && (
-						<div aria-live="polite" className="flex flex-col gap-3">
+						<div className="flex flex-col gap-3">
 							{result.blocks.length === 0 ? (
 								<p className="text-sm text-gray-600">
 									No text found. Try again closer, with more
@@ -303,9 +315,6 @@ export default function CameraTranslatePage() {
 													onClick={() =>
 														toggleOriginal(index)
 													}
-													aria-pressed={shownOriginals.has(
-														index,
-													)}
 													className="w-full px-4 py-3 text-left text-base leading-snug text-gray-900 hover:bg-gray-50"
 												>
 													{shownOriginals.has(
