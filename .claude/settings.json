@@ -6,7 +6,12 @@
 			"Bash(npx biome check:*)",
 			"Bash(npx tsc --noEmit)",
 			"Bash(npm run lint)",
-			"Bash(npm run lint:fix)"
+			"Bash(npm run lint:fix)",
+			"Bash(pnpm lint)",
+			"Bash(pnpm lint:fix)",
+			"Bash(pnpm exec biome check:*)",
+			"Bash(pnpm exec tsc --noEmit)",
+			"Bash(pnpm test)"
 		],
 		"deny": [
 			"Bash(npm run deploy:*)",

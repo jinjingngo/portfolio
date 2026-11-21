@@ -20,13 +20,13 @@ OpenNext and served as a Cloudflare Worker (`wrangler.jsonc`).
 Package manager is pnpm 12 (`pnpm install --frozen-lockfile`). Dependencies allowed to
 run install scripts are listed under `allowBuilds` in `pnpm-workspace.yaml`.
 
-| Task                     | Command                                               |
-| ------------------------ | ----------------------------------------------------- |
-| Lint + format check      | `npx biome check` (fix: `npm run lint:fix`)           |
-| Typecheck                | `npx tsc --noEmit`                                    |
-| Tests                    | `npm test` (node:test over `tests/**/*.test.ts`)      |
-| Dev server               | `npm run dev`                                         |
-| Regenerate binding types | `npm run cf:typegen` (after editing `wrangler.jsonc`) |
+| Task                     | Command                                            |
+| ------------------------ | -------------------------------------------------- |
+| Lint + format check      | `pnpm lint` (fix: `pnpm lint:fix`)                 |
+| Typecheck                | `pnpm exec tsc --noEmit`                           |
+| Tests                    | `pnpm test` (node:test over `tests/**/*.test.ts`)  |
+| Dev server               | `pnpm dev`                                         |
+| Regenerate binding types | `pnpm cf:typegen` (after editing `wrangler.jsonc`) |
 
 Run lint, typecheck and tests before every commit. `next build` needs Cloudflare credentials
 (wrangler remote proxy), so it usually fails locally; verify builds on the Cloudflare
@@ -34,8 +34,8 @@ preview URL of the PR instead.
 
 ## Danger zones
 
-- **Merging to `main` deploys production.** Never merge, and never run `npm run deploy`
-  or `npm run upload`, unless the owner asks in that conversation.
+- **Merging to `main` deploys production.** Never merge, and never run `pnpm run deploy`
+  or `pnpm run upload`, unless the owner asks in that conversation.
 - **The dev server uses the production KV.** `PUSH_SUBSCRIPTIONS` is bound with
   `"remote": true`, so local writes and deletes hit real subscriber data.
 - **Secrets** (`VAPID_PRIVATE_KEY`, etc.) live in Cloudflare and in `.dev.vars` locally.
