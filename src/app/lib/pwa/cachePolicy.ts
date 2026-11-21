@@ -1,3 +1,5 @@
+import { t } from "try";
+
 /**
  * Pure caching rules for the service worker: which strategy and cache each
  * request gets, the cache names per version, and which caches are obsolete.
@@ -149,12 +151,12 @@ export const safeSitePath = (value: unknown) => {
 	if (typeof value !== "string" || !value.startsWith("/")) return "/";
 	// Resolve it as a browser would ("/\\evil", "/\t/evil" and "//evil" all
 	// leave the site) and keep it only if it stays on the same origin.
+	// No URL.canParse: it's missing before Safari 17, and this runs in the
+	// service worker, which isn't polyfilled.
 	const base = "https://site.invalid";
-	if (!URL.canParse(value, base)) return "/";
-	const url = new URL(value, base);
-	return url.origin === base
-		? `${url.pathname}${url.search}${url.hash}`
-		: "/";
+	const [ok, , url] = t(() => new URL(value, base));
+	if (!ok || url.origin !== base) return "/";
+	return `${url.pathname}${url.search}${url.hash}`;
 };
 
 /**

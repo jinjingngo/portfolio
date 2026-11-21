@@ -474,3 +474,17 @@ describe("staticAssetsIn", () => {
 		]);
 	});
 });
+
+describe("safeSitePath without URL.canParse (Safari 16, service worker)", () => {
+	it("works when the browser lacks URL.canParse", () => {
+		const original = URL.canParse;
+		// @ts-expect-error simulate an older browser
+		delete URL.canParse;
+		try {
+			assert.equal(safeSitePath("/lab?a=1"), "/lab?a=1");
+			assert.equal(safeSitePath("/\\evil.example"), "/");
+		} finally {
+			URL.canParse = original;
+		}
+	});
+});
