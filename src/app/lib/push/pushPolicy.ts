@@ -1,4 +1,5 @@
 import { t } from "try";
+import { type Decision, reject } from "../decision";
 
 /**
  * Pure rules for who may send which push notification. No I/O, no clock:
@@ -17,9 +18,7 @@ export const PUSH_LIMITS = Object.freeze({
 	sendTokenBytes: 32,
 });
 
-export type Decision<T> =
-	| { ok: true; value: T }
-	| { ok: false; error: string; status: number };
+export type { Decision } from "../decision";
 
 export type NotificationPayload = {
 	title: string;
@@ -27,9 +26,6 @@ export type NotificationPayload = {
 	/** A path on this site, never an absolute URL. */
 	url: string;
 };
-
-const reject = (error: string, status: number) =>
-	({ ok: false, error, status }) as const;
 
 export const isValidClientId = (clientId: unknown): clientId is string =>
 	typeof clientId === "string" &&
