@@ -136,3 +136,35 @@ export const isCacheable = (response: ResponseInfo) =>
 	response.type === "basic" &&
 	!response.redirected &&
 	!/\bno-store\b/i.test(response.cacheControl ?? "");
+
+/**
+ * A path on this site, or "/" for anything that could leave it
+ * ("//evil", "https://…", "javascript:…", missing).
+ */
+export const safeSitePath = (value: unknown) =>
+	typeof value === "string" &&
+	value.startsWith("/") &&
+	!value.startsWith("//")
+		? value
+		: "/";
+
+/**
+ * Where to send a navigation that's offline and not cached: the offline page,
+ * remembering the page that was asked for so "Try again" can return to it.
+ * (Serving the offline page's HTML under another URL breaks Next's router.)
+ */
+export const offlineUrl = (requestUrl: string) => {
+	const url = new URL(requestUrl);
+	const from = `${url.pathname}${url.search}`;
+	return `${OFFLINE_PATH}?${new URLSearchParams({ from })}`;
+};
+
+const STATIC_ASSET = /(?:src|href)="(\/_next\/static\/[^"?#]+)"/g;
+
+/**
+ * The hashed /_next/static files a page's HTML loads, so the worker can
+ * cache them with the page and it still works (hydrates) offline.
+ */
+export const staticAssetsIn = (html: string) => [
+	...new Set([...html.matchAll(STATIC_ASSET)].map((match) => match[1])),
+];

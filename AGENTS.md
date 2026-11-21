@@ -79,6 +79,13 @@ only be applied by the `main` deploy. A new binding must be added to `previews` 
 - A new deploy's worker waits until the user taps Reload in the "new version" prompt (or every
   tab closes). Don't call `skipWaiting()` on install: it would swap code under open pages.
 - `public/webPushServiceWorker.js` is a redirect to `/sw.js` for browsers registered before #82.
+- **Caching** (`src/app/lib/pwa/cachePolicy.ts`, `strategyFor`): hashed `/_next/static` files
+  cache-first, page loads network-first (3 s) falling back to the cached page then `/offline`,
+  public assets stale-while-revalidate. APIs, non-GET, other origins and Next RSC fetches are never
+  cached. A new route or API needs no change unless it should work offline; if it must never be
+  cached, make sure `strategyFor` returns network-only for it (add a test row).
+- Page caches and the precache are per version; `jj-static` and `jj-assets` are shared across
+  versions on purpose (an old tab still needs its old chunks). Cache sizes live in `CACHE_LIMITS`.
 
 ## Code style
 

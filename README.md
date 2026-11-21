@@ -23,6 +23,10 @@ from a local CA (mkcert) that only this machine trusts. To test push on a phone,
 and trust the CA's `rootCA.pem` on the phone. Next prints that folder when it creates the
 certificate ("CA Root certificate created in …").
 
+Production builds install a service worker (`src/sw/`): pages you've visited open offline,
+others show `/offline`, and a new deploy offers "A new version is available · Reload". Test it
+with `pnpm preview` in real Chrome or Safari.
+
 The dev server uses local Cloudflare bindings: push subscriptions live in a local KV under
 `.wrangler/state`, never in production.
 

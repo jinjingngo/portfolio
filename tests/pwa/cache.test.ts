@@ -4,7 +4,10 @@ import {
 	cacheNames,
 	isCacheable,
 	obsoleteCaches,
+	offlineUrl,
 	type RequestInfo,
+	safeSitePath,
+	staticAssetsIn,
 	strategyFor,
 } from "../../src/app/lib/pwa/cachePolicy.ts";
 import {
@@ -337,5 +340,37 @@ describe("trimCache", () => {
 			[...entries.keys()].map((url) => new URL(url).pathname),
 			["/3.png", "/4.png"],
 		);
+	});
+});
+
+describe("offlineUrl and safeSitePath", () => {
+	it("sends an uncached page offline to /offline, remembering it", () => {
+		assert.equal(
+			offlineUrl(`${ORIGIN}/lab/web-push?x=1`),
+			"/offline?from=%2Flab%2Fweb-push%3Fx%3D1",
+		);
+	});
+
+	it("only returns to paths on this site", () => {
+		assert.equal(safeSitePath("/lab/web-push?x=1"), "/lab/web-push?x=1");
+		for (const value of [
+			"//evil.example",
+			"https://evil.example",
+			"javascript:x",
+			null,
+			undefined,
+		]) {
+			assert.equal(safeSitePath(value), "/");
+		}
+	});
+});
+
+describe("staticAssetsIn", () => {
+	it("finds the hashed scripts and styles a page loads, once each", () => {
+		const html = `<link rel="stylesheet" href="/_next/static/chunks/a1.css"/><script src="/_next/static/chunks/b2.js" async=""></script><script src="/_next/static/chunks/b2.js"></script><img src="/icon-192.png"/><script src="https://cdn.example/x.js"></script>`;
+		assert.deepEqual(staticAssetsIn(html), [
+			"/_next/static/chunks/a1.css",
+			"/_next/static/chunks/b2.js",
+		]);
 	});
 });

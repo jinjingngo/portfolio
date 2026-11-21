@@ -9,8 +9,10 @@ import {
 	cacheNames,
 	OFFLINE_PATH,
 	obsoleteCaches,
+	offlineUrl,
 	PRECACHE_PATHS,
 	type Strategy,
+	staticAssetsIn,
 	strategyFor,
 } from "../app/lib/pwa/cachePolicy";
 import {
@@ -39,12 +41,29 @@ const CACHES = cacheNames(VERSION);
 // Precache the basics. A new worker then waits until the page asks it to
 // take over (see SKIP_WAITING), so open pages never switch code mid-session.
 self.addEventListener("install", (event) => {
-	event.waitUntil(
-		caches
-			.open(CACHES.precache)
-			.then((cache) => cache.addAll([...PRECACHE_PATHS])),
-	);
+	event.waitUntil(precache());
 });
+
+/** Caches the precache pages, plus the scripts and styles they load. */
+const precache = async () => {
+	const pages = await caches.open(CACHES.precache);
+	await pages.addAll(
+		PRECACHE_PATHS.map((path) => new Request(path, { cache: "reload" })),
+	);
+	const assets = new Set<string>();
+	for (const path of PRECACHE_PATHS) {
+		const response = await pages.match(path);
+		if (!response?.headers.get("content-type")?.includes("text/html"))
+			continue;
+		for (const asset of staticAssetsIn(await response.text()))
+			assets.add(asset);
+	}
+	// Best effort: a missing chunk must not stop the worker from installing.
+	const statics = await caches.open(CACHES.static);
+	await Promise.all(
+		[...assets].map((asset) => statics.add(asset).catch(() => undefined)),
+	);
+};
 
 // Drop older versions' pages and precache; shared static/asset caches stay,
 // so a tab still on the previous version keeps finding its files.
@@ -87,10 +106,20 @@ const respond = async (
 		const response = await networkFirst(request, cache, network, {
 			timeoutMs: CACHE_LIMITS.navigationTimeoutMs,
 			waitUntil,
-			// A precached copy of this page (e.g. "/"), else the offline page.
-			fallback: async () =>
-				(await caches.match(request)) ??
-				(await caches.match(OFFLINE_PATH)),
+			// A precached copy (e.g. "/"), else the offline page: served directly
+			// for /offline itself, otherwise via a redirect so the URL matches it.
+			fallback: async () => {
+				if (new URL(request.url).pathname === OFFLINE_PATH) {
+					return caches.match(OFFLINE_PATH);
+				}
+				return (
+					(await caches.match(request)) ??
+					Response.redirect(
+						new URL(offlineUrl(request.url), self.location.origin),
+						302,
+					)
+				);
+			},
 		});
 		waitUntil(trimCache(cache, CACHE_LIMITS.maxPages));
 		return response;
