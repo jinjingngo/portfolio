@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"lib": ["webworker", "esnext"],
+		"strict": true,
+		"noEmit": true,
+		"skipLibCheck": true,
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"isolatedModules": true,
+		"target": "ES2020",
+		"types": []
+	},
+	"include": ["./*.ts", "../app/lib/pwa/swProtocol.ts"]
+}
