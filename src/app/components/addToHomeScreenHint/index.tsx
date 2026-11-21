@@ -6,9 +6,9 @@ export const AddToHomeScreenHint = ({
 }) => (
 	<div
 		role="status"
-		className="fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex justify-center px-4"
+		className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex justify-center px-4"
 	>
-		<div className="flex items-center gap-3 rounded-2xl bg-gray-900 py-2 ps-4 pe-2 text-sm text-white shadow-lg">
+		<div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-gray-900 py-2 ps-4 pe-2 text-sm text-white shadow-lg">
 			<span>
 				Install this site as an app: tap <strong>Share</strong>, then{" "}
 				<strong>Add to Home Screen</strong>.

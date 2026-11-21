@@ -1,17 +1,4 @@
-import { INSTALL_PROMPT_STASH } from "@/app/lib/pwa/installPolicy";
-
-const KEY = JSON.stringify(INSTALL_PROMPT_STASH);
-
-/** Keeps the event for the navbar's button instead of Chrome's mini-infobar. */
-const CATCH_INSTALL_PROMPT = `
-window.addEventListener("beforeinstallprompt", function (event) {
-	event.preventDefault();
-	window[${KEY}] = event;
-});
-window.addEventListener("appinstalled", function () {
-	window[${KEY}] = null;
-});
-`;
+import { CATCH_INSTALL_PROMPT } from "@/app/lib/pwa/installPromptScript";
 
 /**
  * Catches `beforeinstallprompt` before hydration: Chrome fires it once per
