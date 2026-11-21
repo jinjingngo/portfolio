@@ -9,6 +9,8 @@ import {
 	base64DecodedBytes,
 	buildTranslatePrompt,
 	defaultTargetLanguage,
+	describeAiError,
+	isSameOrigin,
 	isTargetLanguage,
 	parseModelAnswer,
 	parseTranslateRequest,
@@ -273,5 +275,29 @@ describe("translateModel", () => {
 		assert.deepEqual(answerOf({ response: { a: 1 } }), { a: 1 });
 		assert.equal(answerOf(null), null);
 		assert.equal(answerOf({}), null);
+	});
+});
+
+describe("isSameOrigin", () => {
+	const url = "https://wujinjing.com/api/translate/image";
+
+	it("accepts only this site's origin", () => {
+		assert.equal(isSameOrigin("https://wujinjing.com", url), true);
+		assert.equal(isSameOrigin("https://evil.example", url), false);
+		assert.equal(isSameOrigin("http://wujinjing.com", url), false);
+		assert.equal(isSameOrigin(null, url), false);
+	});
+});
+
+describe("describeAiError", () => {
+	it("never includes image data and caps the length", () => {
+		const text = describeAiError(
+			new Error(
+				`bad input "data:image/jpeg;base64,${"A".repeat(5000)}" rejected`,
+			),
+		);
+		assert.equal(text.includes("base64"), false);
+		assert.match(text, /<image>/);
+		assert.ok(describeAiError("x".repeat(1000)).length <= 300);
 	});
 });

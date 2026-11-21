@@ -199,6 +199,20 @@ export const parseModelAnswer = (answer: unknown): Decision<Translation> => {
 	return accept({ sourceLanguage: kept.length ? code : null, blocks: kept });
 };
 
+/**
+ * True when a browser request comes from this site. Browsers send Origin on
+ * POST; a missing or different origin is refused so other sites can't spend
+ * the translation allowance.
+ */
+export const isSameOrigin = (originHeader: string | null, requestUrl: string) =>
+	originHeader !== null && originHeader === new URL(requestUrl).origin;
+
+/** An AI error as text safe to log: no image data, length-capped. */
+export const describeAiError = (error: unknown) =>
+	String(error)
+		.replace(/data:[^\s"']+/g, "<image>")
+		.slice(0, 300);
+
 /** UTC day (YYYY-MM-DD) for the site-wide daily cap. */
 export const utcDay = (nowMs: number) =>
 	new Date(nowMs).toISOString().slice(0, 10);

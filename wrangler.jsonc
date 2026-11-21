@@ -29,6 +29,11 @@
 	},
 	"workers_dev": true,
 	"preview_urls": true,
+	// Workers AI for /api/translate/image. Has no local mode: `pnpm dev` uses the
+	// real account and spends the same daily allowance.
+	"ai": {
+		"binding": "AI"
+	},
 	"kv_namespaces": [
 		{
 			"binding": "PUSH_SUBSCRIPTIONS",
