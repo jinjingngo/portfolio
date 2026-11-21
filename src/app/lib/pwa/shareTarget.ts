@@ -52,7 +52,7 @@ export const SHARE_MESSAGES: Record<Exclude<ShareOutcome, "ready">, string> = {
 	invalid:
 		"That share wasn't a photo this page can translate. Try sharing a single image.",
 	unavailable:
-		"The shared photo didn't arrive. Open the app once, then share again, or choose the photo here.",
+		"The shared photo didn't arrive. Open the app (and tap Reload if it offers a new version), then share again, or choose the photo here.",
 };
 
 /** Whether a request is a photo shared into the app (only the worker answers it). */

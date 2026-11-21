@@ -30,7 +30,8 @@ import {
 	type Translation,
 } from "@/app/lib/translate/translatePolicy";
 
-type Step = "idle" | "camera" | "translating" | "result" | "error";
+/** `shared`: a photo shared into the app, shown until the visitor taps Translate. */
+type Step = "idle" | "camera" | "translating" | "shared" | "result" | "error";
 
 const buttonClass =
 	"rounded-full px-5 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gray-300 disabled:cursor-not-allowed disabled:opacity-40";
@@ -194,20 +195,33 @@ export default function CameraTranslatePage() {
 		const file = event.target.files?.[0];
 		event.target.value = "";
 		if (!file) return;
-		openPhoto(file);
+		openPhoto(file, "translate");
 	};
 
-	/** Scales a picked or shared photo down and translates it. */
-	const openPhoto = async (file: Blob) => {
+	/**
+	 * Scales a picked or shared photo down, then translates it, or for a shared
+	 * photo only shows it: any site can post to the share target, so translating
+	 * (which spends the quota) waits for a tap.
+	 */
+	const openPhoto = async (file: Blob, then: "translate" | "show") => {
 		// Busy while the new photo loads: the language picker is disabled and any
 		// translation still in flight for the previous photo is ignored.
 		requestRef.current++;
 		setStep("translating");
 		try {
 			const image = await loadImageFile(file);
-			translate(
-				toJpegDataUri(image, image.naturalWidth, image.naturalHeight),
+			const scaled = toJpegDataUri(
+				image,
+				image.naturalWidth,
+				image.naturalHeight,
 			);
+			if (then === "translate") {
+				translate(scaled);
+				return;
+			}
+			setPhoto(scaled);
+			setResult(null);
+			setStep("shared");
 		} catch (reason) {
 			fail(
 				reason instanceof Error
@@ -217,7 +231,7 @@ export default function CameraTranslatePage() {
 		}
 	};
 
-	// A photo shared into the app (the manifest's share_target) opens once,
+	// A photo shared into the app (the manifest's share_target) is shown once,
 	// after the client id and target language have loaded.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs once per share, when the client id is ready
 	useEffect(() => {
@@ -230,8 +244,13 @@ export default function CameraTranslatePage() {
 			fail(SHARE_MESSAGES[outcome]);
 			return;
 		}
+		// Busy until it loads, so a photo picked meanwhile isn't replaced by it.
+		requestRef.current++;
+		setStep("translating");
 		takeSharedPhoto().then((shared) =>
-			shared ? openPhoto(shared) : fail(SHARE_MESSAGES.unavailable),
+			shared
+				? openPhoto(shared, "show")
+				: fail(SHARE_MESSAGES.unavailable),
 		);
 	}, [clientId]);
 
@@ -511,6 +530,12 @@ export default function CameraTranslatePage() {
 							)}
 						</div>
 					)}
+					{step === "shared" && (
+						<p aria-live="polite" className="text-sm text-gray-600">
+							Shared photo ready. Tap Translate to read it in{" "}
+							{nameOf(target)}.
+						</p>
+					)}
 					{step === "error" && (
 						<p aria-live="polite" className="text-sm text-red-700">
 							{error}
@@ -537,6 +562,16 @@ export default function CameraTranslatePage() {
 							</>
 						) : (
 							<>
+								{step === "shared" && photo && (
+									<button
+										type="button"
+										onClick={() => translate(photo)}
+										disabled={!clientId || !online}
+										className={primary}
+									>
+										Translate
+									</button>
+								)}
 								<button
 									type="button"
 									onClick={startCamera}
@@ -546,7 +581,9 @@ export default function CameraTranslatePage() {
 										!clientId ||
 										!online
 									}
-									className={primary}
+									className={
+										step === "shared" ? secondary : primary
+									}
 								>
 									{photo ? "Retake" : "Open camera"}
 								</button>

@@ -92,8 +92,9 @@ only be applied by the `main` deploy. A new binding must be added to `previews` 
   screenshots are in `public/screenshots/`; retake them when the pages they show change a lot.
 - **Share target** (`src/app/lib/pwa/shareTarget.ts`): a photo shared to the installed app is a
   POST to `/lab/camera-translate/share`. The worker keeps it in the `jj-share` cache and redirects
-  to `/lab/camera-translate?shared=1`, which takes it out and translates it. With no worker, the
-  route at that path redirects with `?shared=unavailable`. Android/Chrome only.
+  to `/lab/camera-translate?shared=1`, which takes it out and shows it. Any site can post there,
+  so the page translates only after a tap (never automatically). With no worker, the route at
+  that path redirects with `?shared=unavailable`. Android/Chrome only.
 - **App badge** (`appBadge.ts`): a push badges the icon with the number of notifications still
   showing; `AppBadgeClearer` clears it when the app is opened. No-op where unsupported.
 

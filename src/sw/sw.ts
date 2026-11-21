@@ -275,8 +275,8 @@ const updateBadge = async () => {
 self.addEventListener("notificationclick", (event) => {
 	event.notification.close();
 	const url = safeNotificationPath(event.notification.data?.url);
-	// Separate from opening the window, which must not wait behind it.
-	event.waitUntil(updateBadge());
+	// No badge update here: the click opens the app, which clears the badge
+	// (AppBadgeClearer); setting it here could race and bring it back.
 	event.waitUntil(
 		(async () => {
 			// Only windows this worker controls can be navigated; focus first,
