@@ -26,6 +26,12 @@ export type InstallEnvironment = Device & {
  */
 export type InstallHint = "prompt" | "ios" | "none";
 
+/**
+ * `window` property where an early inline script keeps the install prompt
+ * event: Chrome fires it once per page load, possibly before React hydrates.
+ */
+export const INSTALL_PROMPT_STASH = "__jjInstallPrompt";
+
 /** localStorage key remembering that the iOS hint was closed. */
 export const INSTALL_HINT_DISMISSED_KEY = "JJ:INSTALL_HINT_DISMISSED";
 
