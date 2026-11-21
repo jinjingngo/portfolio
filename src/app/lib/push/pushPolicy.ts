@@ -1,3 +1,5 @@
+import { t } from "try";
+
 /**
  * Pure rules for who may send which push notification. No I/O, no clock:
  * the API routes load state, call these, then write.
@@ -124,6 +126,19 @@ export const pushServiceHost = (endpoint: string | undefined) =>
 export const describeError = (error: unknown, endpoint: string | undefined) => {
 	const text = String(error);
 	return endpoint ? text.replaceAll(endpoint, "<endpoint>") : text;
+};
+
+/**
+ * Parses the VAPID private key (a JWK stored as JSON), or null when it is
+ * missing or invalid. Returns no error on purpose: JSON.parse's message quotes
+ * the start of its input, which here is the secret, so callers can't log it.
+ */
+export const parseVapidPrivateKey = (raw: string | undefined) => {
+	if (!raw) return null;
+	const [ok, error, value] = t((): unknown => JSON.parse(raw));
+	if (!ok || error || typeof value !== "object" || value === null)
+		return null;
+	return value as JsonWebKey;
 };
 
 /** Start (epoch ms) of the fixed rate-limit window containing `nowMs`. */

@@ -8,6 +8,7 @@ import {
 	isValidClientId,
 	PUSH_LIMITS,
 	parseNotification,
+	parseVapidPrivateKey,
 	pushServiceHost,
 	rateWindowStart,
 	toSameOriginPath,
@@ -194,5 +195,25 @@ describe("describeError", () => {
 			"Error: Invalid JWK: missing 'd'",
 		);
 		assert.equal(describeError("plain", undefined), "plain");
+	});
+});
+
+describe("parseVapidPrivateKey", () => {
+	it("parses a JWK stored as JSON", () => {
+		const jwk = { kty: "EC", crv: "P-256", x: "x", y: "y", d: "d" };
+		assert.deepEqual(parseVapidPrivateKey(JSON.stringify(jwk)), jwk);
+	});
+
+	it("returns null, never an error quoting the secret, for invalid values", () => {
+		for (const raw of [
+			undefined,
+			"",
+			"SECRETKEYNOTJSON",
+			"null",
+			"42",
+			'"text"',
+		]) {
+			assert.equal(parseVapidPrivateKey(raw), null);
+		}
 	});
 });
