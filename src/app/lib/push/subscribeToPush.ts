@@ -1,4 +1,9 @@
 import { t } from "try";
+import {
+	classifySendStatus,
+	type PushEnvironment,
+	pushUnavailableReason,
+} from "./pushClientPolicy";
 import { requestWithTokenRetry, tokenRefreshedElsewhere } from "./tokenRetry";
 
 const urlBase64ToUint8Array = (base64String: string) => {
@@ -52,20 +57,29 @@ const savePushSubscription = async (
 	return token;
 };
 
-// TODO: iOS Notification and ServiceWorker check need to be investigated further
+const readPushEnvironment = (): PushEnvironment => ({
+	hasNotification: "Notification" in window,
+	hasServiceWorker: "serviceWorker" in navigator,
+	hasPushManager: "PushManager" in window,
+	isAppleMobile:
+		/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+		(navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1),
+	isStandalone:
+		window.matchMedia?.("(display-mode: standalone)").matches === true ||
+		(navigator as { standalone?: boolean }).standalone === true,
+});
+
+/** Why web push can't be used in this browser, or null when it can. */
+export const getPushUnavailableReason = () =>
+	pushUnavailableReason(readPushEnvironment());
+
 export const subscribeToPush = async (clientId: string) => {
 	if (typeof window === "undefined") {
 		throw new Error("Push subscription is only available in the browser.");
 	}
 
-	if (!("Notification" in window)) {
-		throw new Error("Push notifications are not supported.");
-	}
-	if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-		throw new Error(
-			"Push notifications are not supported in this browser.",
-		);
-	}
+	const unavailable = getPushUnavailableReason();
+	if (unavailable) throw new Error(unavailable);
 
 	const permission = await Notification.requestPermission();
 
@@ -151,6 +165,29 @@ const refreshSendToken = async (clientId: string, staleToken: string) => {
 	return navigator.locks.request(SEND_TOKEN_LOCK, refresh);
 };
 
+/** The push service no longer accepts this browser's subscription. */
+export class PushSubscriptionExpiredError extends Error {
+	constructor() {
+		super(
+			"This browser's notification subscription has expired. Turn notifications on again.",
+		);
+		this.name = "PushSubscriptionExpiredError";
+	}
+}
+
+/**
+ * Drops this browser's dead subscription and token, so later sends don't
+ * re-save a subscription the push service has already rejected.
+ */
+const forgetLocalSubscription = async () => {
+	writeSendToken(null);
+	const subscription = await getPushSubscription();
+	if (!subscription) return;
+	const [ok, error] = await t(subscription.unsubscribe());
+	if (!ok || error)
+		console.error("Unable to drop the expired subscription", error);
+};
+
 export type TestNotification = {
 	title: string;
 	message: string;
@@ -180,12 +217,16 @@ export const sendPushNotification = async (
 		(staleToken) => refreshSendToken(clientId, staleToken),
 	);
 
-	if (response.status === 429) {
+	const outcome = classifySendStatus(response.status);
+	if (outcome === "sent") return;
+	if (outcome === "throttled") {
 		throw new Error("Too many notifications. Try again in a minute.");
 	}
-	if (!response.ok) {
-		throw new Error("The test notification could not be sent.");
+	if (outcome === "expired") {
+		await forgetLocalSubscription();
+		throw new PushSubscriptionExpiredError();
 	}
+	throw new Error("The test notification could not be sent.");
 };
 
 export const unsubscribeFromPush = async (clientId: string) => {

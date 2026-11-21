@@ -101,14 +101,20 @@ export const decideSubscribe = (input: {
 };
 
 /**
- * Status the send route returns for the push service's answer. Failures become
- * 502 so a push-service 401/403 (e.g. a rejected VAPID signature) isn't read
- * by the browser as its own token being rejected.
+ * Status the send route returns for the push service's answer. Success passes
+ * through; throttling stays 429 and a gone subscription (404/410) becomes 410,
+ * so the browser can tell those apart. Other failures become 502, so a
+ * push-service 401/403 (e.g. a rejected VAPID signature) isn't read by the
+ * browser as its own token being rejected.
  */
-export const deliveryStatus = (pushServiceStatus: number) =>
-	pushServiceStatus >= 200 && pushServiceStatus < 300
-		? pushServiceStatus
-		: 502;
+export const deliveryStatus = (pushServiceStatus: number) => {
+	if (pushServiceStatus >= 200 && pushServiceStatus < 300) {
+		return pushServiceStatus;
+	}
+	if (pushServiceStatus === 429) return 429;
+	if (pushServiceStatus === 404 || pushServiceStatus === 410) return 410;
+	return 502;
+};
 
 /**
  * The push service's host, safe to log. The full endpoint URL is a secret: it

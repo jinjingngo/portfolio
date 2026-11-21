@@ -6,6 +6,8 @@ import { Toggle } from "@/app/components/toggle";
 import { useClientId } from "@/app/hooks/useClientId";
 import {
 	getPushSubscription,
+	getPushUnavailableReason,
+	PushSubscriptionExpiredError,
 	sendPushNotification,
 	subscribeToPush,
 	unsubscribeFromPush,
@@ -20,6 +22,13 @@ export default function WebPushPage() {
 	const [message, setMessage] = useState("Checking notification status…");
 
 	useEffect(() => {
+		const unavailable = getPushUnavailableReason();
+		if (unavailable) {
+			setStatus("error");
+			setMessage(unavailable);
+			return;
+		}
+
 		let active = true;
 		getPushSubscription()
 			.then((subscription) => {
@@ -87,6 +96,8 @@ export default function WebPushPage() {
 			setStatus("success");
 			setMessage("Test notification sent.");
 		} catch (error) {
+			if (error instanceof PushSubscriptionExpiredError)
+				setEnabled(false);
 			setStatus("error");
 			setMessage(
 				error instanceof Error
