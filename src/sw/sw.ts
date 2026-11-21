@@ -59,17 +59,19 @@ self.addEventListener("notificationclick", (event) => {
 	const url = safeNotificationPath(event.notification.data?.url);
 	event.waitUntil(
 		(async () => {
-			const windows = await self.clients.matchAll({
-				type: "window",
-				includeUncontrolled: true,
-			});
-			const existing = windows[0];
-			if (existing) {
-				await existing.navigate(url);
-				await existing.focus();
+			// Only windows this worker controls can be navigated; focus first,
+			// while the click still counts as a user action.
+			const [existing] = await self.clients.matchAll({ type: "window" });
+			if (!existing) {
+				await self.clients.openWindow(url);
 				return;
 			}
-			await self.clients.openWindow(url);
+			try {
+				const focused = await existing.focus();
+				await focused.navigate(url);
+			} catch {
+				await self.clients.openWindow(url);
+			}
 		})(),
 	);
 });
