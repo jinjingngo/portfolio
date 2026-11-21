@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Toggle } from "@/app/components/toggle";
 import { useClientId } from "@/app/hooks/useClientId";
+import { useOnline } from "@/app/hooks/useOnline";
 import {
 	getPushSubscription,
 	getPushUnavailableReason,
@@ -17,6 +18,7 @@ type Status = "checking" | "idle" | "working" | "success" | "error";
 
 export default function WebPushPage() {
 	const { id: clientId } = useClientId();
+	const online = useOnline();
 	const [enabled, setEnabled] = useState(false);
 	const [status, setStatus] = useState<Status>("checking");
 	const [message, setMessage] = useState("Checking notification status…");
@@ -107,7 +109,8 @@ export default function WebPushPage() {
 		}
 	};
 
-	const busy = status === "checking" || status === "working" || !clientId;
+	const busy =
+		status === "checking" || status === "working" || !clientId || !online;
 
 	return (
 		<div className="flex min-w-0 flex-1 flex-col gap-8">
@@ -129,6 +132,12 @@ export default function WebPushPage() {
 
 			<section className="w-full min-w-0 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
 				<div className="flex flex-col gap-6">
+					{!online && (
+						<p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+							You&apos;re offline. Notifications need a connection
+							to turn on, off or send.
+						</p>
+					)}
 					<Toggle
 						label="Enable notifications"
 						checked={enabled}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useClientId } from "@/app/hooks/useClientId";
+import { useOnline } from "@/app/hooks/useOnline";
 import { useReadAloud } from "@/app/hooks/useReadAloud";
 import {
 	loadImageFile,
@@ -48,6 +49,7 @@ const useLanguageNames = () => {
 
 export default function CameraTranslatePage() {
 	const { id: clientId } = useClientId();
+	const online = useOnline();
 	const names = useLanguageNames();
 	const nameOf = (code: string | null) =>
 		code ? (names?.of(code) ?? code) : "unknown";
@@ -205,7 +207,8 @@ export default function CameraTranslatePage() {
 		writeLastTarget(code);
 		const again = shouldRetranslate({
 			hasPhoto: photo !== null,
-			settled: !opening && (step === "result" || step === "error"),
+			settled:
+				online && !opening && (step === "result" || step === "error"),
 			lastTarget,
 			nextTarget: code,
 		});
@@ -249,6 +252,12 @@ export default function CameraTranslatePage() {
 
 			<section className="w-full min-w-0 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
 				<div className="flex flex-col gap-5">
+					{!online && (
+						<p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+							You&apos;re offline. Translating needs a connection;
+							reading a result aloud still works.
+						</p>
+					)}
 					<label className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
 						Translate into
 						<select
@@ -467,7 +476,8 @@ export default function CameraTranslatePage() {
 									disabled={
 										step === "translating" ||
 										opening ||
-										!clientId
+										!clientId ||
+										!online
 									}
 									className={primary}
 								>
@@ -477,7 +487,9 @@ export default function CameraTranslatePage() {
 									type="button"
 									onClick={() => fileRef.current?.click()}
 									disabled={
-										step === "translating" || !clientId
+										step === "translating" ||
+										!clientId ||
+										!online
 									}
 									className={secondary}
 								>

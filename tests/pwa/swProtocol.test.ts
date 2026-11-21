@@ -6,6 +6,7 @@ import {
 	parseWorkerMessage,
 	SKIP_WAITING,
 	safeNotificationPath,
+	WARM_PAGE,
 } from "../../src/app/lib/pwa/swProtocol.ts";
 
 describe("parseWorkerMessage", () => {
@@ -83,5 +84,31 @@ describe("notificationFromPush", () => {
 				url: "/",
 			},
 		);
+	});
+});
+
+describe("safeNotificationPath against browser URL quirks", () => {
+	it("refuses backslash and control-character tricks", () => {
+		for (const url of [
+			"/\\evil.example",
+			"/\t/evil.example",
+			"/\n/evil.example",
+		]) {
+			assert.equal(safeNotificationPath(url), "/");
+		}
+	});
+});
+
+describe("WARM_PAGE messages", () => {
+	it("carries a safe same-site path", () => {
+		assert.deepEqual(
+			parseWorkerMessage({ type: WARM_PAGE, path: "/lab" }),
+			{ type: WARM_PAGE, path: "/lab" },
+		);
+		assert.deepEqual(
+			parseWorkerMessage({ type: WARM_PAGE, path: "//evil.example" }),
+			{ type: WARM_PAGE, path: "/" },
+		);
+		assert.equal(parseWorkerMessage({ type: WARM_PAGE }), null);
 	});
 });
