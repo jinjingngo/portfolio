@@ -20,13 +20,24 @@ const fakeBrowser = (
 ) => {
 	const store = new Map<string, string>();
 	const calls: Call[] = [];
-	const subscription = {
-		unsubscribed: false,
-		toJSON: () => ({ endpoint: "https://push.example/abc", keys: {} }),
-		unsubscribe: async () => {
-			subscription.unsubscribed = true;
-			return true;
-		},
+	const makeSubscription = (endpoint: string) => {
+		const made = {
+			endpoint,
+			unsubscribed: false,
+			toJSON: () => ({ endpoint, keys: {} }),
+			unsubscribe: async () => {
+				made.unsubscribed = true;
+				return true;
+			},
+		};
+		return made;
+	};
+	const subscription = makeSubscription("https://push.example/abc");
+	let current = subscription;
+	/** Another tab re-subscribed: the browser now has a different subscription. */
+	const replaceSubscription = () => {
+		current = makeSubscription("https://push.example/new");
+		return current;
 	};
 	const define = (name: string, value: unknown) =>
 		Object.defineProperty(globalThis, name, {
@@ -45,7 +56,7 @@ const fakeBrowser = (
 			getRegistration: async () => ({
 				pushManager: {
 					getSubscription: async () =>
-						subscription.unsubscribed ? null : subscription,
+						current.unsubscribed ? null : current,
 				},
 			}),
 		},
@@ -65,7 +76,7 @@ const fakeBrowser = (
 		if (!handler) throw new Error(`unexpected request ${path}`);
 		return handler(body);
 	});
-	return { store, calls, subscription };
+	return { store, calls, subscription, replaceSubscription };
 };
 
 const json = (status: number, body: unknown = {}) =>
@@ -132,6 +143,27 @@ describe("sendPushNotification", () => {
 			browser.calls.map((call) => call.path),
 			["/api/push/send"],
 		);
+	});
+
+	it("keeps a subscription another tab created while the send was in flight", async () => {
+		let replacement: { unsubscribed: boolean } | undefined;
+		const browser = fakeBrowser({
+			"/api/push/send": [
+				() => {
+					replacement = browser.replaceSubscription();
+					browser.store.set(TOKEN_KEY, "token-of-new-subscription");
+					return json(410);
+				},
+			],
+		});
+		browser.store.set(TOKEN_KEY, "token");
+
+		await assert.rejects(
+			sendPushNotification(CLIENT_ID, NOTIFICATION),
+			/could not be sent/,
+		);
+		assert.equal(browser.store.get(TOKEN_KEY), "token-of-new-subscription");
+		assert.equal(replacement?.unsubscribed, false);
 	});
 
 	it("reports throttling and other failures with their own messages", async () => {

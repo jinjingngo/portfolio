@@ -14,6 +14,16 @@ export const classifySendStatus = (status: number): SendOutcome => {
 	return "failed";
 };
 
+/**
+ * Whether the subscription a 410 refers to is still this browser's current
+ * one. Another tab may have re-subscribed while the send was in flight; that
+ * new subscription must not be dropped because the old one expired.
+ */
+export const isSameSubscription = (
+	expiredEndpoint: string | null,
+	currentEndpoint: string | null,
+) => expiredEndpoint !== null && expiredEndpoint === currentEndpoint;
+
 /** Browser capabilities that decide whether web push can be used. */
 export type PushEnvironment = {
 	hasNotification: boolean;

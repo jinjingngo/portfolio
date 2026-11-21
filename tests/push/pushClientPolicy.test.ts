@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	classifySendStatus,
+	isSameSubscription,
 	type PushEnvironment,
 	pushUnavailableReason,
 } from "../../src/app/lib/push/pushClientPolicy.ts";
@@ -59,5 +60,14 @@ describe("pushUnavailableReason", () => {
 			pushUnavailableReason({ ...iosTab, isStandalone: true }),
 			"Push notifications are not supported in this browser.",
 		);
+	});
+});
+
+describe("isSameSubscription", () => {
+	it("is true only for the same, known endpoint", () => {
+		assert.equal(isSameSubscription("https://p/a", "https://p/a"), true);
+		assert.equal(isSameSubscription("https://p/a", "https://p/b"), false);
+		assert.equal(isSameSubscription(null, "https://p/a"), false);
+		assert.equal(isSameSubscription(null, null), false);
 	});
 });

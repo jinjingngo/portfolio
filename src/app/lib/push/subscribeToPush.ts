@@ -1,6 +1,7 @@
 import { t } from "try";
 import {
 	classifySendStatus,
+	isSameSubscription,
 	type PushEnvironment,
 	pushUnavailableReason,
 } from "./pushClientPolicy";
@@ -177,15 +178,21 @@ export class PushSubscriptionExpiredError extends Error {
 
 /**
  * Drops this browser's dead subscription and token, so later sends don't
- * re-save a subscription the push service has already rejected.
+ * re-save a subscription the push service has already rejected. Only when the
+ * current subscription is still the expired one: another tab may have
+ * re-subscribed meanwhile. True when it dropped the expired subscription.
  */
-const forgetLocalSubscription = async () => {
+const forgetExpiredSubscription = async (expiredEndpoint: string | null) => {
+	const [found, , current] = await t(getPushSubscription());
+	if (!found || !current) return false;
+	if (!isSameSubscription(expiredEndpoint, current.endpoint)) return false;
+
 	writeSendToken(null);
-	const subscription = await getPushSubscription();
-	if (!subscription) return;
-	const [ok, error] = await t(subscription.unsubscribe());
-	if (!ok || error)
+	const [ok, error] = await t(current.unsubscribe());
+	if (!ok || error) {
 		console.error("Unable to drop the expired subscription", error);
+	}
+	return true;
 };
 
 export type TestNotification = {
@@ -201,6 +208,7 @@ export const sendPushNotification = async (
 ) => {
 	const token = await getSendToken(clientId);
 	if (!token) throw new Error("Enable notifications first.");
+	const sentWith = (await getPushSubscription())?.endpoint ?? null;
 
 	const response = await requestWithTokenRetry(
 		token,
@@ -222,8 +230,7 @@ export const sendPushNotification = async (
 	if (outcome === "throttled") {
 		throw new Error("Too many notifications. Try again in a minute.");
 	}
-	if (outcome === "expired") {
-		await forgetLocalSubscription();
+	if (outcome === "expired" && (await forgetExpiredSubscription(sentWith))) {
 		throw new PushSubscriptionExpiredError();
 	}
 	throw new Error("The test notification could not be sent.");
