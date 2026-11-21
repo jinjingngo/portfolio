@@ -11,6 +11,8 @@ export const PUSH_LIMITS = Object.freeze({
 	sendsPerWindow: 5,
 	/** Rate-limit window in seconds (KV's minimum TTL is 60s). */
 	windowSeconds: 60,
+	/** Random bytes in a send token (base64url-encoded to 43 characters). */
+	sendTokenBytes: 32,
 });
 
 export type Decision<T> =

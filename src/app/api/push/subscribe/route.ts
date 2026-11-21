@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { t } from "try";
-import { decideSubscribe, isValidClientId } from "@/app/lib/push/pushPolicy";
+import {
+	decideSubscribe,
+	isValidClientId,
+	PUSH_LIMITS,
+} from "@/app/lib/push/pushPolicy";
 import { encodeSendToken, verifySendToken } from "@/app/lib/push/sendToken";
 import {
 	getPushSubscriptionByClientId,
@@ -64,7 +68,11 @@ export const POST = async (request: Request) => {
 		new Date(),
 		decision.value === "keep" && body.token
 			? body.token
-			: encodeSendToken(crypto.getRandomValues(new Uint8Array(32))),
+			: encodeSendToken(
+					crypto.getRandomValues(
+						new Uint8Array(PUSH_LIMITS.sendTokenBytes),
+					),
+				),
 	);
 
 	return NextResponse.json({

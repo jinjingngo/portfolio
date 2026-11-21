@@ -1,3 +1,4 @@
+import { t } from "try";
 import { requestWithTokenRetry, tokenRefreshedElsewhere } from "./tokenRetry";
 
 const urlBase64ToUint8Array = (base64String: string) => {
@@ -122,10 +123,12 @@ const getSendToken = async (clientId: string) => {
 const SEND_TOKEN_LOCK = "JJ:WEB_PUSH_SEND_TOKEN_REFRESH";
 
 /**
- * Replaces a token the server rejected: drops it and re-saves this browser's
- * subscription, which the server accepts by its push endpoint. Tabs refresh
- * one at a time (Web Locks) and reuse a token another tab just refreshed.
- * Null when there is no subscription to re-save or the save fails.
+ * Replaces a token the server rejected by re-saving this browser's
+ * subscription with that token: the server keeps it if it was valid after all
+ * (a stale KV read) and otherwise issues a new one by the push endpoint. The
+ * stored token is never cleared meanwhile, so other tabs don't re-save around
+ * the lock. Tabs refresh one at a time (Web Locks) and reuse a token another
+ * tab just refreshed. Null when there is no subscription or the save fails.
  */
 const refreshSendToken = async (clientId: string, staleToken: string) => {
 	const refresh = async () => {
@@ -134,13 +137,14 @@ const refreshSendToken = async (clientId: string, staleToken: string) => {
 
 		const subscription = await getPushSubscription();
 		if (!subscription) return null;
-		writeSendToken(null);
-		try {
-			return await savePushSubscription(clientId, subscription);
-		} catch (error) {
+		const [ok, error, token] = await t(
+			savePushSubscription(clientId, subscription),
+		);
+		if (!ok || error) {
 			console.error("Unable to refresh push send token", error);
 			return null;
 		}
+		return token;
 	};
 
 	if (!navigator.locks) return refresh();
