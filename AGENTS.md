@@ -28,9 +28,20 @@ run install scripts are listed under `allowBuilds` in `pnpm-workspace.yaml`.
 | Dev server               | `pnpm dev`                                         |
 | Regenerate binding types | `pnpm cf:typegen` (after editing `wrangler.jsonc`) |
 
-Run lint, typecheck and tests before every commit. `next build` needs Cloudflare credentials
-(wrangler remote proxy), so it usually fails locally; verify builds on the Cloudflare
-preview URL of the PR instead.
+Run lint, typecheck and tests before every commit. `pnpm build` works locally (dev bindings
+are local); the Cloudflare build on the PR is the check for the Worker bundle.
+
+## Deploys
+
+Cloudflare Workers Builds runs on every push:
+
+- **`main`**: `pnpm run deploy` (build, then deploy). Merging to `main` puts it live.
+- **Other branches**: `pnpm run upload` (build, then upload a version). Each gets a preview
+  URL (`<version>-portfolio.jinjingwu.workers.dev`), behind Cloudflare Access.
+
+These commands are set in the Cloudflare dashboard (Workers → portfolio → Settings → Builds),
+not in the repo. On other branches a green "Workers Builds" check means the build and upload
+worked, not that production changed; `pnpm exec wrangler deployments list` shows what is live.
 
 ## Danger zones
 
