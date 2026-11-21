@@ -183,9 +183,20 @@ export class PushSubscriptionExpiredError extends Error {
  * current subscription is still the expired one: another tab may have
  * re-subscribed meanwhile. True only when the browser dropped it.
  */
-const forgetExpiredSubscription = async (expiredEndpoint: string | null) => {
+const forgetExpiredSubscription = async (
+	expiredEndpoint: string | null,
+	usedToken: string,
+) => {
 	const [found, , current] = await t(getPushSubscription());
-	if (!found || !current) return false;
+	if (!found) return false;
+
+	// Already gone locally: only the token is left. Clear it unless another
+	// tab has stored a newer one since this send.
+	if (!current) {
+		if (tokenRefreshedElsewhere(readSendToken(), usedToken)) return false;
+		writeSendToken(null);
+		return true;
+	}
 	if (!isSameSubscription(expiredEndpoint, current.endpoint)) return false;
 
 	// Token and toggle change only once the browser really dropped it;
@@ -213,10 +224,12 @@ export const sendPushNotification = async (
 	const token = await getSendToken(clientId);
 	if (!token) throw new Error("Enable notifications first.");
 
+	let usedToken = token;
 	const response = await requestWithTokenRetry(
 		token,
-		(currentToken) =>
-			fetch("/api/push/send", {
+		(currentToken) => {
+			usedToken = currentToken;
+			return fetch("/api/push/send", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
@@ -224,7 +237,8 @@ export const sendPushNotification = async (
 					token: currentToken,
 					...notification,
 				}),
-			}),
+			});
+		},
 		(staleToken) => refreshSendToken(clientId, staleToken),
 	);
 
@@ -237,7 +251,9 @@ export const sendPushNotification = async (
 		// Compare with the endpoint the server pushed to, not a local snapshot:
 		// a newer subscription may exist here before the server has saved it.
 		const [, , body] = await t(response.json());
-		if (await forgetExpiredSubscription(expiredEndpointOf(body))) {
+		if (
+			await forgetExpiredSubscription(expiredEndpointOf(body), usedToken)
+		) {
 			throw new PushSubscriptionExpiredError();
 		}
 	}

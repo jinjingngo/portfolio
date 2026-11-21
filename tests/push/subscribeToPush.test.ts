@@ -184,6 +184,37 @@ describe("sendPushNotification", () => {
 		assert.equal(browser.store.get(TOKEN_KEY), "token");
 	});
 
+	it("clears the token when the subscription is already gone locally", async () => {
+		const browser = fakeBrowser({ "/api/push/send": [gone] });
+		browser.store.set(TOKEN_KEY, "token");
+		browser.subscription.unsubscribed = true;
+
+		await assert.rejects(
+			sendPushNotification(CLIENT_ID, NOTIFICATION),
+			PushSubscriptionExpiredError,
+		);
+		assert.equal(browser.store.has(TOKEN_KEY), false);
+	});
+
+	it("keeps a newer token another tab stored when nothing is left locally", async () => {
+		const browser = fakeBrowser({
+			"/api/push/send": [
+				() => {
+					browser.store.set(TOKEN_KEY, "newer-from-other-tab");
+					return gone();
+				},
+			],
+		});
+		browser.store.set(TOKEN_KEY, "token");
+		browser.subscription.unsubscribed = true;
+
+		await assert.rejects(
+			sendPushNotification(CLIENT_ID, NOTIFICATION),
+			/could not be sent/,
+		);
+		assert.equal(browser.store.get(TOKEN_KEY), "newer-from-other-tab");
+	});
+
 	it("drops nothing when a 410 doesn't name the expired endpoint", async () => {
 		const browser = fakeBrowser({ "/api/push/send": [() => json(410)] });
 		browser.store.set(TOKEN_KEY, "token");
