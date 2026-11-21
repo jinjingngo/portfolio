@@ -1,11 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AddToHomeScreenHint } from "@/app/components/addToHomeScreenHint";
+import { useInstallPrompt } from "@/app/hooks/useInstallPrompt";
 import { cn } from "@/app/lib/cn";
 
 export const Navbar = () => {
 	const pathname = usePathname();
 	const isSelf = (path: string) => path === pathname;
+	const { hint, install, dismissHint } = useInstallPrompt();
 
 	return (
 		<nav className="shrink-0 ps-[max(0.5rem,env(safe-area-inset-left))] pe-[max(0.5rem,env(safe-area-inset-right))] pb-[max(0.25rem,env(safe-area-inset-bottom))]">
@@ -32,7 +35,19 @@ export const Navbar = () => {
 						/lab
 					</Link>
 				</li>
+				{hint === "prompt" && (
+					<li>
+						<button
+							type="button"
+							onClick={install}
+							className="cursor-pointer underline-offset-2 decoration-wavy hover:underline"
+						>
+							Install app
+						</button>
+					</li>
+				)}
 			</ul>
+			{hint === "ios" && <AddToHomeScreenHint onDismiss={dismissHint} />}
 		</nav>
 	);
 };

@@ -2,6 +2,7 @@ import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
+import { InstallPromptCatcher } from "./components/installPromptCatcher";
 import { Navbar } from "./components/navbar";
 import { OfflinePageSaver } from "./components/offlinePageSaver";
 import { PwaUpdatePrompt } from "./components/pwaUpdatePrompt";
@@ -37,6 +38,9 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en">
+			<head>
+				<InstallPromptCatcher />
+			</head>
 			<body
 				className={`flex min-h-dvh w-full max-w-full flex-col gap-4 bg-gray-50 ${montserrat.className}`}
 			>

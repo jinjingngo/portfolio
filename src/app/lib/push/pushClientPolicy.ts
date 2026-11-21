@@ -3,6 +3,8 @@
  * for the visitor, and why push is unavailable on this device.
  */
 
+import type { Device } from "../pwa/installPolicy";
+
 /** What the browser does with a /api/push/send response. */
 export type SendOutcome = "sent" | "throttled" | "expired" | "failed";
 
@@ -34,14 +36,10 @@ export const isSameSubscription = (
 ) => expiredEndpoint !== null && expiredEndpoint === currentEndpoint;
 
 /** Browser capabilities that decide whether web push can be used. */
-export type PushEnvironment = {
+export type PushEnvironment = Device & {
 	hasNotification: boolean;
 	hasServiceWorker: boolean;
 	hasPushManager: boolean;
-	/** iPhone or iPad, including iPadOS reporting itself as a Mac. */
-	isAppleMobile: boolean;
-	/** Opened from the Home Screen (standalone display mode). */
-	isStandalone: boolean;
 };
 
 /**

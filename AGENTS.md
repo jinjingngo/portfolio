@@ -86,6 +86,10 @@ only be applied by the `main` deploy. A new binding must be added to `previews` 
   cached, make sure `strategyFor` returns network-only for it (add a test row).
 - Page caches and the precache are per version; `jj-static` and `jj-assets` are shared across
   versions on purpose (an old tab still needs its old chunks). Cache sizes live in `CACHE_LIMITS`.
+- **Install** (`src/app/manifest.ts`): the navbar shows "Install app" when the browser offers
+  `beforeinstallprompt`; iPhone/iPad tabs get a one-time Add to Home Screen hint. The choice is
+  `installHint` in `src/app/lib/pwa/installPolicy.ts` (tested). The manifest's install-dialog
+  screenshots are in `public/screenshots/`; retake them when the pages they show change a lot.
 
 ## Code style
 
