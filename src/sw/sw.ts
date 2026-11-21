@@ -30,9 +30,11 @@ import {
 	staleWhileRevalidate,
 	trimCache,
 } from "../app/lib/pwa/cacheStrategies";
+import { readLimited } from "../app/lib/pwa/readLimited";
 import {
 	checkSharedPhoto,
 	isShareTargetRequest,
+	SHARE_LIMITS,
 	SHARE_TARGET_FIELD,
 	SHARED_PHOTO_KEY,
 	type ShareOutcome,
@@ -179,7 +181,18 @@ const responseInfo = (response: Response) => ({
  * until Camera Translate picks it up, then the visitor is sent there.
  */
 const receiveShare = async (request: Request) => {
-	const [read, , form] = await t(request.formData());
+	// Any site can post here: read at most the limit, never the whole body.
+	const [bounded, , body] = await t(
+		readLimited(request.body, SHARE_LIMITS.maxBodyBytes),
+	);
+	if (!bounded || !body) return shareRedirect("invalid");
+	const [read, , form] = await t(
+		new Response(body, {
+			headers: {
+				"content-type": request.headers.get("content-type") ?? "",
+			},
+		}).formData(),
+	);
 	const entry = read ? form.get(SHARE_TARGET_FIELD) : null;
 	const photo = entry instanceof File ? entry : null;
 	const check = checkSharedPhoto(photo);

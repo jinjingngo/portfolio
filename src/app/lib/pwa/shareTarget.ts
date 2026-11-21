@@ -23,6 +23,8 @@ export const SHARE_LIMITS = Object.freeze({
 	 * limits before sending, as it does for a picked photo.
 	 */
 	maxPhotoBytes: 25_000_000,
+	/** The whole multipart body: the photo plus room for its headers. */
+	maxBodyBytes: 25_000_000 + 64_000,
 });
 
 /** What happened to a share, as passed to the page in `?shared=`. */
