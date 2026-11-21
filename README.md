@@ -43,8 +43,9 @@ Use a dev-only key pair, not the production keys. Production keys are Cloudflare
 
 `/lab/camera-translate` uses Workers AI, which has no local mode: `pnpm dev` and `pnpm preview`
 call the real Cloudflare account (sign in with `pnpm exec wrangler login`) and spend the same
-daily free allowance as production (10,000 neurons, about 40 per photo). The site-wide daily
-cap applies locally too.
+daily free allowance as production (10,000 neurons, about 40 per photo). Local runs keep their
+own daily count in the local KV, so they spend the shared allowance without counting toward
+production's cap.
 
 ## Scripts
 

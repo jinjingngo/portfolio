@@ -1,4 +1,5 @@
 import { t } from "try";
+import { isValidClientId } from "../clientId";
 import { accept, type Decision, reject } from "../decision";
 
 /**
@@ -10,11 +11,12 @@ import { accept, type Decision, reject } from "../decision";
 export const TRANSLATE_LIMITS = Object.freeze({
 	/** Decoded image bytes accepted by the API. */
 	maxImageBytes: 1_500_000,
+	/** Request body bytes: the base64 image plus room for the other fields. */
+	maxBodyBytes: Math.ceil((1_500_000 * 4) / 3) + 16_384,
 	/** Long edge the browser scales a photo down to before upload. */
 	maxImageEdge: 1280,
 	/** JPEG quality for the upload (0–1). */
 	jpegQuality: 0.8,
-	maxClientIdLength: 128,
 	/** Translations per client per rate window. */
 	translationsPerWindow: 6,
 	/** Rate-limit window in seconds (KV's minimum TTL is 60s). */
@@ -109,6 +111,23 @@ export const base64DecodedBytes = (payload: string) =>
 	Math.floor((payload.length * 3) / 4) -
 	(payload.match(/=+$/)?.[0].length ?? 0);
 
+/**
+ * Checks the declared body size before the body is read, so an oversized
+ * request is refused without parsing it.
+ */
+export const checkBodySize = (contentLength: string | null): Decision<true> => {
+	if (contentLength === null)
+		return reject("Content-Length is required.", 411);
+	const bytes = Number(contentLength);
+	if (!Number.isInteger(bytes) || bytes < 0) {
+		return reject("Invalid Content-Length.", 400);
+	}
+	if (bytes > TRANSLATE_LIMITS.maxBodyBytes) {
+		return reject("The image is too large.", 413);
+	}
+	return accept(true);
+};
+
 /** Validates a translate request body. */
 export const parseTranslateRequest = (input: {
 	clientId?: unknown;
@@ -116,13 +135,7 @@ export const parseTranslateRequest = (input: {
 	targetLanguage?: unknown;
 }): Decision<TranslateRequest> => {
 	const { clientId, image, targetLanguage } = input;
-	if (
-		typeof clientId !== "string" ||
-		!clientId ||
-		clientId.length > TRANSLATE_LIMITS.maxClientIdLength
-	) {
-		return reject("Missing clientId.", 400);
-	}
+	if (!isValidClientId(clientId)) return reject("Missing clientId.", 400);
 	if (!isTargetLanguage(targetLanguage)) {
 		return reject("Unsupported target language.", 400);
 	}

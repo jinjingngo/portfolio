@@ -1,4 +1,5 @@
 import { t } from "try";
+import { MAX_CLIENT_ID_LENGTH } from "../clientId";
 import { type Decision, reject } from "../decision";
 
 /**
@@ -8,7 +9,7 @@ import { type Decision, reject } from "../decision";
 
 /** Push limits; the one place these numbers live. */
 export const PUSH_LIMITS = Object.freeze({
-	maxClientIdLength: 128,
+	maxClientIdLength: MAX_CLIENT_ID_LENGTH,
 	maxTitleLength: 100,
 	maxMessageLength: 300,
 	sendsPerWindow: 5,
@@ -27,10 +28,7 @@ export type NotificationPayload = {
 	url: string;
 };
 
-export const isValidClientId = (clientId: unknown): clientId is string =>
-	typeof clientId === "string" &&
-	clientId.length > 0 &&
-	clientId.length <= PUSH_LIMITS.maxClientIdLength;
+export { isValidClientId } from "../clientId";
 
 /**
  * Resolves `url` against `origin` and returns it as a relative path, or null

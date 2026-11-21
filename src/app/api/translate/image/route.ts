@@ -8,6 +8,7 @@ import {
 	TRANSLATE_MODEL,
 } from "@/app/lib/translate/translateModel";
 import {
+	checkBodySize,
 	describeAiError,
 	isSameOrigin,
 	parseModelAnswer,
@@ -22,6 +23,9 @@ export const POST = async (request: Request) => {
 	if (!isSameOrigin(request.headers.get("origin"), request.url)) {
 		return fail("Requests must come from this site.", 403);
 	}
+
+	const size = checkBodySize(request.headers.get("content-length"));
+	if (!size.ok) return fail(size.error, size.status);
 
 	const [parsed, , body] = await t(request.json<Record<string, unknown>>());
 	if (!parsed || typeof body !== "object" || body === null) {

@@ -29,15 +29,19 @@ const stopTracks = (stream: MediaStream | null) => {
 	for (const track of stream?.getTracks() ?? []) track.stop();
 };
 
-/** Language names in the visitor's own language, e.g. "svenska" or "Swedish". */
-const useLanguageNames = () =>
-	useMemo(() => {
+/**
+ * Language names in the visitor's own language, e.g. "svenska" or "Swedish".
+ * English until mounted, so server and first client render match.
+ */
+const useLanguageNames = () => {
+	const [locale, setLocale] = useState("en");
+	useEffect(() => setLocale(navigator.language || "en"), []);
+	return useMemo(() => {
 		if (typeof Intl === "undefined" || !("DisplayNames" in Intl))
 			return null;
-		const locale =
-			typeof navigator === "undefined" ? "en" : navigator.language;
 		return new Intl.DisplayNames([locale, "en"], { type: "language" });
-	}, []);
+	}, [locale]);
+};
 
 export default function CameraTranslatePage() {
 	const { id: clientId } = useClientId();
@@ -48,12 +52,18 @@ export default function CameraTranslatePage() {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const streamRef = useRef<MediaStream | null>(null);
 	const fileRef = useRef<HTMLInputElement>(null);
+	const cameraFileRef = useRef<HTMLInputElement>(null);
+	const mountedRef = useRef(false);
+	const openingRef = useRef(false);
 
 	const [step, setStep] = useState<Step>("idle");
 	const [error, setError] = useState("");
 	const [target, setTarget] = useState<TargetLanguage>("en");
 	const [photo, setPhoto] = useState<string | null>(null);
-	const [result, setResult] = useState<Translation | null>(null);
+	const [result, setResult] = useState<
+		(Translation & { target: TargetLanguage }) | null
+	>(null);
+	const [opening, setOpening] = useState(false);
 	const [shownOriginals, setShownOriginals] = useState<Set<number>>(
 		new Set(),
 	);
@@ -68,7 +78,14 @@ export default function CameraTranslatePage() {
 		stopTracks(streamRef.current);
 		streamRef.current = null;
 	};
-	useEffect(() => () => stopTracks(streamRef.current), []);
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+			stopTracks(streamRef.current);
+			streamRef.current = null;
+		};
+	}, []);
 
 	const fail = (message: string) => {
 		stopCamera();
@@ -78,14 +95,23 @@ export default function CameraTranslatePage() {
 
 	const startCamera = async () => {
 		if (!navigator.mediaDevices?.getUserMedia) {
-			fileRef.current?.click();
+			cameraFileRef.current?.click();
 			return;
 		}
+		// One request at a time: a second tap while the permission prompt is
+		// open would otherwise leave the first stream running.
+		if (openingRef.current || streamRef.current) return;
+		openingRef.current = true;
+		setOpening(true);
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({
 				video: { facingMode: { ideal: "environment" } },
 				audio: false,
 			});
+			if (!mountedRef.current) {
+				stopTracks(stream);
+				return;
+			}
 			streamRef.current = stream;
 			setStep("camera");
 			const video = videoRef.current;
@@ -96,6 +122,9 @@ export default function CameraTranslatePage() {
 			fail(
 				"Camera access was blocked. Allow it in your browser, or choose a photo instead.",
 			);
+		} finally {
+			openingRef.current = false;
+			if (mountedRef.current) setOpening(false);
 		}
 	};
 
@@ -106,7 +135,12 @@ export default function CameraTranslatePage() {
 		setShownOriginals(new Set());
 		setStep("translating");
 		try {
-			setResult(await requestTranslation(clientId, image, target));
+			const translation = await requestTranslation(
+				clientId,
+				image,
+				target,
+			);
+			setResult({ ...translation, target });
 			setStep("result");
 		} catch (reason) {
 			fail(
@@ -264,7 +298,8 @@ export default function CameraTranslatePage() {
 					{step === "result" && result?.blocks.length ? (
 						<p className="text-sm text-gray-600">
 							Detected {nameOf(result.sourceLanguage)} →{" "}
-							{nameOf(target)}. Tap a line to see the original.
+							{nameOf(result.target)}. Tap a line to see the
+							original.
 						</p>
 					) : null}
 					{step === "error" && (
@@ -297,7 +332,9 @@ export default function CameraTranslatePage() {
 									type="button"
 									onClick={startCamera}
 									disabled={
-										step === "translating" || !clientId
+										step === "translating" ||
+										opening ||
+										!clientId
 									}
 									className={primary}
 								>
@@ -315,8 +352,17 @@ export default function CameraTranslatePage() {
 								</button>
 							</>
 						)}
+						{/* Library or camera, the phone's own choice. */}
 						<input
 							ref={fileRef}
+							type="file"
+							accept="image/*"
+							onChange={pickFile}
+							className="hidden"
+						/>
+						{/* Camera only: for "Open camera" when getUserMedia is missing. */}
+						<input
+							ref={cameraFileRef}
 							type="file"
 							accept="image/*"
 							capture="environment"

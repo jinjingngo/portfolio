@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { MAX_CLIENT_ID_LENGTH } from "../../src/app/lib/clientId.ts";
 import {
 	answerOf,
 	buildModelInput,
@@ -8,6 +9,7 @@ import {
 import {
 	base64DecodedBytes,
 	buildTranslatePrompt,
+	checkBodySize,
 	defaultTargetLanguage,
 	describeAiError,
 	isSameOrigin,
@@ -62,7 +64,7 @@ describe("parseTranslateRequest", () => {
 			{ ...valid, clientId: "" },
 			{
 				...valid,
-				clientId: "x".repeat(TRANSLATE_LIMITS.maxClientIdLength + 1),
+				clientId: "x".repeat(MAX_CLIENT_ID_LENGTH + 1),
 			},
 			{ ...valid, targetLanguage: "xx" },
 			{ ...valid, image: undefined },
@@ -312,5 +314,27 @@ describe("scaleToFit", () => {
 	it("never scales up and never returns zero", () => {
 		assert.deepEqual(scaleToFit(640, 480), { width: 640, height: 480 });
 		assert.deepEqual(scaleToFit(0, 0), { width: 1, height: 1 });
+	});
+});
+
+describe("checkBodySize", () => {
+	it("accepts a declared size up to the limit", () => {
+		assert.equal(checkBodySize("1024").ok, true);
+		assert.equal(
+			checkBodySize(String(TRANSLATE_LIMITS.maxBodyBytes)).ok,
+			true,
+		);
+	});
+
+	it("refuses missing, invalid and oversized bodies before reading them", () => {
+		const status = (value: string | null) => {
+			const decision = checkBodySize(value);
+			return decision.ok ? 200 : decision.status;
+		};
+		assert.equal(status(null), 411);
+		assert.equal(status("abc"), 400);
+		assert.equal(status("-1"), 400);
+		assert.equal(status(String(TRANSLATE_LIMITS.maxBodyBytes + 1)), 413);
+		assert.equal(status("90000000"), 413);
 	});
 });
