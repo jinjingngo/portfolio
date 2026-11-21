@@ -152,8 +152,14 @@ describe("deliveryStatus", () => {
 		assert.equal(deliveryStatus(200), 200);
 	});
 
-	it("maps push-service failures to 502, never to our own 401", () => {
-		for (const status of [400, 401, 403, 404, 410, 413, 429, 500, 503]) {
+	it("keeps throttling as 429 and a gone subscription as 410", () => {
+		assert.equal(deliveryStatus(429), 429);
+		assert.equal(deliveryStatus(404), 410);
+		assert.equal(deliveryStatus(410), 410);
+	});
+
+	it("maps other push-service failures to 502, never to our own 401", () => {
+		for (const status of [400, 401, 403, 413, 500, 503]) {
 			assert.equal(deliveryStatus(status), 502);
 		}
 	});
