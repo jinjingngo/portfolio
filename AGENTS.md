@@ -17,8 +17,8 @@ OpenNext and served as a Cloudflare Worker (`wrangler.jsonc`).
 
 ## Commands
 
-Package manager is pnpm (lockfile v9). If `pnpm` is not installed:
-`npx -y pnpm@10 install --frozen-lockfile`.
+Package manager is pnpm 12 (`pnpm install --frozen-lockfile`). Dependencies allowed to
+run install scripts are listed under `allowBuilds` in `pnpm-workspace.yaml`.
 
 | Task | Command |
 | --- | --- |
