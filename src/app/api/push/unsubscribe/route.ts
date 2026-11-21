@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { t } from "try";
+import { verifySendToken } from "@/app/lib/push/sendToken";
 import {
 	deletePushSubscription,
 	getPushSubscriptionByClientId,
-	verifySendToken,
 } from "@/app/lib/server/pushKV";
 import type { SubscribeBody } from "../subscribe/route";
 
@@ -39,7 +39,7 @@ export const POST = async (request: Request) => {
 		return NextResponse.json({ ok: true });
 	}
 
-	if (!(await verifySendToken(stored, body.token))) {
+	if (!(await verifySendToken(stored.tokenHash, body.token))) {
 		return NextResponse.json(
 			{
 				ok: false,
