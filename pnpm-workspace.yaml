@@ -1,3 +1,7 @@
 allowBuilds:
     esbuild: true
     workerd: true
+# Security fixes (Dependabot): @opennextjs/cloudflare still pins glob@^13. Remove once it allows these.
+overrides:
+    glob: ^14.0.2
+    minimatch: ^11.0.1
