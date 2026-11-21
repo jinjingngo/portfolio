@@ -7,6 +7,7 @@ import {
 	isValidClientId,
 	PUSH_LIMITS,
 	parseNotification,
+	pushServiceHost,
 	rateWindowStart,
 	toSameOriginPath,
 } from "../../src/app/lib/push/pushPolicy.ts";
@@ -153,5 +154,20 @@ describe("deliveryStatus", () => {
 		for (const status of [400, 401, 403, 404, 410, 413, 429, 500, 503]) {
 			assert.equal(deliveryStatus(status), 502);
 		}
+	});
+});
+
+describe("pushServiceHost", () => {
+	it("keeps only the host, never the secret path", () => {
+		const endpoint = "https://web.push.apple.com/QGuQyavXutnMH6Ivup";
+		assert.equal(pushServiceHost(endpoint), "web.push.apple.com");
+		assert.equal(pushServiceHost(endpoint).includes("QGuQ"), false);
+	});
+
+	it("does not echo an unparseable endpoint", () => {
+		assert.equal(
+			pushServiceHost("not a url secret-ish"),
+			"invalid-endpoint",
+		);
 	});
 });

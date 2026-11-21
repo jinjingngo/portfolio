@@ -5,7 +5,11 @@ import {
 } from "@pushforge/builder";
 import { NextResponse } from "next/server";
 import { t } from "try";
-import { deliveryStatus, parseNotification } from "@/app/lib/push/pushPolicy";
+import {
+	deliveryStatus,
+	parseNotification,
+	pushServiceHost,
+} from "@/app/lib/push/pushPolicy";
 import { verifySendToken } from "@/app/lib/push/sendToken";
 import {
 	consumeSendQuota,
@@ -71,18 +75,36 @@ export const POST = async (request: Request) => {
 		payload: notification.value,
 	};
 
-	const pushRequest = await buildPushHTTPRequest({
-		privateJWK,
-		subscription:
-			stored.subscription as unknown as PushForgePushSubscription,
-		message,
-	});
+	const [built, buildError, pushRequest] = await t(
+		buildPushHTTPRequest({
+			privateJWK,
+			subscription:
+				stored.subscription as unknown as PushForgePushSubscription,
+			message,
+		}),
+	);
+	if (!built || buildError) {
+		console.error("[ERROR] Building push request failed", {
+			pushService: pushServiceHost(stored.subscription.endpoint),
+			error: String(buildError),
+		});
+		return fail("The notification could not be sent.", 502);
+	}
 
-	const response = await fetch(pushRequest.endpoint, {
-		method: "POST",
-		headers: pushRequest.headers,
-		body: pushRequest.body,
-	});
+	const [sent, sendError, response] = await t(
+		fetch(pushRequest.endpoint, {
+			method: "POST",
+			headers: pushRequest.headers,
+			body: pushRequest.body,
+		}),
+	);
+	if (!sent || sendError) {
+		console.error("[ERROR] Push service unreachable", {
+			pushService: pushServiceHost(pushRequest.endpoint),
+			error: String(sendError),
+		});
+		return fail("The notification could not be sent.", 502);
+	}
 
 	if ([404, 410].includes(response.status)) {
 		await deletePushSubscription(body.clientId);
@@ -93,7 +115,7 @@ export const POST = async (request: Request) => {
 		const responseText = await response.text();
 
 		console.error("[ERROR] Push delivery failed ", {
-			endpoint: pushRequest.endpoint,
+			pushService: pushServiceHost(pushRequest.endpoint),
 			status: response.status,
 			statusText: response.statusText,
 			headers: responseHeaders,
