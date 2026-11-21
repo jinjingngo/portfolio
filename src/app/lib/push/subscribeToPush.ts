@@ -1,4 +1,4 @@
-import { requestWithTokenRetry } from "./tokenRetry";
+import { requestWithTokenRetry, tokenRefreshedElsewhere } from "./tokenRetry";
 
 const urlBase64ToUint8Array = (base64String: string) => {
 	const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -119,21 +119,32 @@ const getSendToken = async (clientId: string) => {
 	return savePushSubscription(clientId, subscription);
 };
 
+const SEND_TOKEN_LOCK = "JJ:WEB_PUSH_SEND_TOKEN_REFRESH";
+
 /**
  * Replaces a token the server rejected: drops it and re-saves this browser's
- * subscription, which the server accepts by its push endpoint. Null when there
- * is no subscription to re-save or the save fails.
+ * subscription, which the server accepts by its push endpoint. Tabs refresh
+ * one at a time (Web Locks) and reuse a token another tab just refreshed.
+ * Null when there is no subscription to re-save or the save fails.
  */
-const refreshSendToken = async (clientId: string) => {
-	const subscription = await getPushSubscription();
-	if (!subscription) return null;
-	writeSendToken(null);
-	try {
-		return await savePushSubscription(clientId, subscription);
-	} catch (error) {
-		console.error("Unable to refresh push send token", error);
-		return null;
-	}
+const refreshSendToken = async (clientId: string, staleToken: string) => {
+	const refresh = async () => {
+		const refreshed = tokenRefreshedElsewhere(readSendToken(), staleToken);
+		if (refreshed) return refreshed;
+
+		const subscription = await getPushSubscription();
+		if (!subscription) return null;
+		writeSendToken(null);
+		try {
+			return await savePushSubscription(clientId, subscription);
+		} catch (error) {
+			console.error("Unable to refresh push send token", error);
+			return null;
+		}
+	};
+
+	if (!navigator.locks) return refresh();
+	return navigator.locks.request(SEND_TOKEN_LOCK, refresh);
 };
 
 export type TestNotification = {
@@ -162,7 +173,7 @@ export const sendPushNotification = async (
 					...notification,
 				}),
 			}),
-		() => refreshSendToken(clientId),
+		(staleToken) => refreshSendToken(clientId, staleToken),
 	);
 
 	if (response.status === 429) {
@@ -183,8 +194,8 @@ export const unsubscribeFromPush = async (clientId: string) => {
 			body: JSON.stringify({ clientId, token: currentToken }),
 		});
 	const response = token
-		? await requestWithTokenRetry(token, unsubscribe, () =>
-				refreshSendToken(clientId),
+		? await requestWithTokenRetry(token, unsubscribe, (staleToken) =>
+				refreshSendToken(clientId, staleToken),
 			)
 		: await unsubscribe(null);
 	if (!response.ok) throw new Error("Failed to remove push subscription.");

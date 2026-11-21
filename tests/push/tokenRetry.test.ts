@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { requestWithTokenRetry } from "../../src/app/lib/push/tokenRetry.ts";
+import {
+	requestWithTokenRetry,
+	tokenRefreshedElsewhere,
+} from "../../src/app/lib/push/tokenRetry.ts";
 
 /** A fake request that answers each token with the given status, recording calls. */
 const fakeRequest = (statusByToken: Record<string, number>) => {
@@ -71,5 +74,32 @@ describe("requestWithTokenRetry", () => {
 		);
 		assert.equal(response.status, 429);
 		assert.deepEqual(calls, ["limited"]);
+	});
+});
+
+describe("requestWithTokenRetry refresh input", () => {
+	it("passes the rejected token to the refresh", async () => {
+		const { request } = fakeRequest({ stale: 401, fresh: 200 });
+		const seen: string[] = [];
+		await requestWithTokenRetry("stale", request, async (staleToken) => {
+			seen.push(staleToken);
+			return "fresh";
+		});
+		assert.deepEqual(seen, ["stale"]);
+	});
+});
+
+describe("tokenRefreshedElsewhere", () => {
+	it("reuses a token another tab stored after the rejection", () => {
+		assert.equal(
+			tokenRefreshedElsewhere("from-other-tab", "stale"),
+			"from-other-tab",
+		);
+	});
+
+	it("re-saves when the stored token is the rejected one or missing", () => {
+		assert.equal(tokenRefreshedElsewhere("stale", "stale"), null);
+		assert.equal(tokenRefreshedElsewhere(null, "stale"), null);
+		assert.equal(tokenRefreshedElsewhere("", "stale"), null);
 	});
 });

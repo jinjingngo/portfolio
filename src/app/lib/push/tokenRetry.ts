@@ -7,13 +7,23 @@
 export const requestWithTokenRetry = async (
 	token: string,
 	request: (token: string) => Promise<Response>,
-	refreshToken: () => Promise<string | null>,
+	refreshToken: (staleToken: string) => Promise<string | null>,
 ): Promise<Response> => {
 	const response = await request(token);
 	if (response.status !== 401) return response;
 
-	const freshToken = await refreshToken();
+	const freshToken = await refreshToken(token);
 	if (!freshToken) return response;
 
 	return request(freshToken);
 };
+
+/**
+ * The token another tab already refreshed, if any: the stored token when it
+ * differs from the one the server just rejected. Reusing it keeps two tabs
+ * from re-saving at once and invalidating each other's fresh token.
+ */
+export const tokenRefreshedElsewhere = (
+	storedToken: string | null,
+	staleToken: string,
+) => (storedToken && storedToken !== staleToken ? storedToken : null);
