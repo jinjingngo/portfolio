@@ -334,7 +334,28 @@ describe("checkBodySize", () => {
 		assert.equal(status(null), 411);
 		assert.equal(status("abc"), 400);
 		assert.equal(status("-1"), 400);
+		assert.equal(status(""), 400);
+		assert.equal(status("1e3"), 400);
+		assert.equal(status("0x10"), 400);
 		assert.equal(status(String(TRANSLATE_LIMITS.maxBodyBytes + 1)), 413);
 		assert.equal(status("90000000"), 413);
+	});
+});
+
+describe("request size limits agree", () => {
+	it("a body with the largest valid image passes the body-size check", () => {
+		const payload = "A".repeat(
+			Math.ceil(TRANSLATE_LIMITS.maxImageBytes / 3) * 4,
+		);
+		const body = JSON.stringify({
+			clientId: "c".repeat(128),
+			targetLanguage: "en",
+			image: `data:image/jpeg;base64,${payload}`,
+		});
+		assert.equal(
+			base64DecodedBytes(payload) >= TRANSLATE_LIMITS.maxImageBytes,
+			true,
+		);
+		assert.equal(checkBodySize(String(Buffer.byteLength(body))).ok, true);
 	});
 });

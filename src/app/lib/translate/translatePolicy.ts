@@ -7,12 +7,14 @@ import { accept, type Decision, reject } from "../decision";
  * model is asked, and what of its answer is trusted. No I/O, no clock.
  */
 
+/** Decoded image bytes accepted by the API. */
+const MAX_IMAGE_BYTES = 1_500_000;
+
 /** Translation limits; the one place these numbers live. */
 export const TRANSLATE_LIMITS = Object.freeze({
-	/** Decoded image bytes accepted by the API. */
-	maxImageBytes: 1_500_000,
+	maxImageBytes: MAX_IMAGE_BYTES,
 	/** Request body bytes: the base64 image plus room for the other fields. */
-	maxBodyBytes: Math.ceil((1_500_000 * 4) / 3) + 16_384,
+	maxBodyBytes: Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 16_384,
 	/** Long edge the browser scales a photo down to before upload. */
 	maxImageEdge: 1280,
 	/** JPEG quality for the upload (0–1). */
@@ -118,10 +120,9 @@ export const base64DecodedBytes = (payload: string) =>
 export const checkBodySize = (contentLength: string | null): Decision<true> => {
 	if (contentLength === null)
 		return reject("Content-Length is required.", 411);
-	const bytes = Number(contentLength);
-	if (!Number.isInteger(bytes) || bytes < 0) {
+	if (!/^\d+$/.test(contentLength))
 		return reject("Invalid Content-Length.", 400);
-	}
+	const bytes = Number(contentLength);
 	if (bytes > TRANSLATE_LIMITS.maxBodyBytes) {
 		return reject("The image is too large.", 413);
 	}
