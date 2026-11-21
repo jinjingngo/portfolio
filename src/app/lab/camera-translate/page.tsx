@@ -13,6 +13,7 @@ import {
 import {
 	defaultTargetLanguage,
 	isTargetLanguage,
+	shouldRetranslate,
 	TARGET_LANGUAGES,
 	type TargetLanguage,
 	type Translation,
@@ -64,6 +65,8 @@ export default function CameraTranslatePage() {
 		(Translation & { target: TargetLanguage }) | null
 	>(null);
 	const [opening, setOpening] = useState(false);
+	/** Language of the last translation attempt, shown or failed. */
+	const [lastTarget, setLastTarget] = useState<TargetLanguage | null>(null);
 	const [shownOriginals, setShownOriginals] = useState<Set<number>>(
 		new Set(),
 	);
@@ -128,8 +131,12 @@ export default function CameraTranslatePage() {
 		}
 	};
 
-	const translate = async (image: string) => {
+	const translate = async (
+		image: string,
+		targetLanguage: TargetLanguage = target,
+	) => {
 		if (!clientId) return;
+		setLastTarget(targetLanguage);
 		setPhoto(image);
 		setResult(null);
 		setShownOriginals(new Set());
@@ -138,9 +145,9 @@ export default function CameraTranslatePage() {
 			const translation = await requestTranslation(
 				clientId,
 				image,
-				target,
+				targetLanguage,
 			);
-			setResult({ ...translation, target });
+			setResult({ ...translation, target: targetLanguage });
 			setStep("result");
 		} catch (reason) {
 			fail(
@@ -181,6 +188,13 @@ export default function CameraTranslatePage() {
 		if (!isTargetLanguage(code)) return;
 		setTarget(code);
 		writeLastTarget(code);
+		const again = shouldRetranslate({
+			hasPhoto: photo !== null,
+			settled: step === "result" || step === "error",
+			lastTarget,
+			nextTarget: code,
+		});
+		if (again && photo) translate(photo, code);
 	};
 
 	const toggleOriginal = (index: number) =>
@@ -259,15 +273,28 @@ export default function CameraTranslatePage() {
 								Reading and translating…
 							</div>
 						)}
-						{step === "result" && result && (
-							<div className="absolute inset-x-0 bottom-0 max-h-[70%] overflow-y-auto bg-black/70 p-4 text-white backdrop-blur-sm">
-								{result.blocks.length === 0 ? (
-									<p className="text-sm">
-										No text found. Try again closer, with
-										more light.
+						{!photo && step !== "camera" && (
+							<div className="flex aspect-[4/3] items-center justify-center p-6 text-center text-sm text-gray-300">
+								Your photo will appear here.
+							</div>
+						)}
+					</div>
+
+					{step === "result" && result && (
+						<div aria-live="polite" className="flex flex-col gap-3">
+							{result.blocks.length === 0 ? (
+								<p className="text-sm text-gray-600">
+									No text found. Try again closer, with more
+									light.
+								</p>
+							) : (
+								<>
+									<p className="text-sm text-gray-600">
+										Detected {nameOf(result.sourceLanguage)}{" "}
+										→ {nameOf(result.target)}. Tap a line to
+										see the original.
 									</p>
-								) : (
-									<ul className="flex flex-col gap-2">
+									<ul className="flex flex-col divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
 										{result.blocks.map((block, index) => (
 											// biome-ignore lint/suspicious/noArrayIndexKey: one fixed list per result, never reordered
 											<li key={index}>
@@ -276,32 +303,28 @@ export default function CameraTranslatePage() {
 													onClick={() =>
 														toggleOriginal(index)
 													}
-													className="text-left text-base leading-snug"
+													aria-pressed={shownOriginals.has(
+														index,
+													)}
+													className="w-full px-4 py-3 text-left text-base leading-snug text-gray-900 hover:bg-gray-50"
 												>
-													{shownOriginals.has(index)
-														? block.text
-														: block.translation}
+													{shownOriginals.has(
+														index,
+													) ? (
+														<span className="text-gray-500">
+															{block.text}
+														</span>
+													) : (
+														block.translation
+													)}
 												</button>
 											</li>
 										))}
 									</ul>
-								)}
-							</div>
-						)}
-						{!photo && step !== "camera" && (
-							<div className="flex aspect-[4/3] items-center justify-center p-6 text-center text-sm text-gray-300">
-								Your photo will appear here.
-							</div>
-						)}
-					</div>
-
-					{step === "result" && result?.blocks.length ? (
-						<p className="text-sm text-gray-600">
-							Detected {nameOf(result.sourceLanguage)} →{" "}
-							{nameOf(result.target)}. Tap a line to see the
-							original.
-						</p>
-					) : null}
+								</>
+							)}
+						</div>
+					)}
 					{step === "error" && (
 						<p aria-live="polite" className="text-sm text-red-700">
 							{error}
