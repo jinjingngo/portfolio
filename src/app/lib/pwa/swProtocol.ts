@@ -4,6 +4,8 @@
  * APIs here, so both sides and the tests can import it.
  */
 
+import { safeSitePath } from "./cachePolicy";
+
 /** Page → worker: activate the waiting worker now (the user chose Reload). */
 export const SKIP_WAITING = "SKIP_WAITING";
 /** Page → worker: reply with the build version (for debugging). */
@@ -24,10 +26,7 @@ export const parseWorkerMessage = (data: unknown): WorkerMessage | null => {
  * A path on this site to open from a notification. Anything that isn't a
  * plain same-site path ("//evil", "https://…", "javascript:…") becomes "/".
  */
-export const safeNotificationPath = (url: unknown) =>
-	typeof url === "string" && url.startsWith("/") && !url.startsWith("//")
-		? url
-		: "/";
+export const safeNotificationPath = (url: unknown) => safeSitePath(url);
 
 export type NotificationSpec = {
 	title: string;

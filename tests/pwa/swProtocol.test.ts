@@ -85,3 +85,15 @@ describe("notificationFromPush", () => {
 		);
 	});
 });
+
+describe("safeNotificationPath against browser URL quirks", () => {
+	it("refuses backslash and control-character tricks", () => {
+		for (const url of [
+			"/\\evil.example",
+			"/\t/evil.example",
+			"/\n/evil.example",
+		]) {
+			assert.equal(safeNotificationPath(url), "/");
+		}
+	});
+});

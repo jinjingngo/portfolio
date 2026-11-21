@@ -28,6 +28,10 @@ export const PRECACHE_PATHS = Object.freeze([
 ]);
 
 const PREFIX = "jj";
+const PAGES = `${PREFIX}-pages-`;
+
+/** Whether a cache holds saved pages (of any version). */
+export const isPagesCache = (name: string) => name.startsWith(PAGES);
 
 /**
  * Cache names. Pages and the precache are per version, so cached HTML always
@@ -38,7 +42,7 @@ const PREFIX = "jj";
 export const cacheNames = (version: string) =>
 	Object.freeze({
 		precache: `${PREFIX}-precache-${version}`,
-		pages: `${PREFIX}-pages-${version}`,
+		pages: `${PAGES}${version}`,
 		static: `${PREFIX}-static`,
 		assets: `${PREFIX}-assets`,
 	});
@@ -141,12 +145,17 @@ export const isCacheable = (response: ResponseInfo) =>
  * A path on this site, or "/" for anything that could leave it
  * ("//evil", "https://…", "javascript:…", missing).
  */
-export const safeSitePath = (value: unknown) =>
-	typeof value === "string" &&
-	value.startsWith("/") &&
-	!value.startsWith("//")
-		? value
+export const safeSitePath = (value: unknown) => {
+	if (typeof value !== "string" || !value.startsWith("/")) return "/";
+	// Resolve it as a browser would ("/\\evil", "/\t/evil" and "//evil" all
+	// leave the site) and keep it only if it stays on the same origin.
+	const base = "https://site.invalid";
+	if (!URL.canParse(value, base)) return "/";
+	const url = new URL(value, base);
+	return url.origin === base
+		? `${url.pathname}${url.search}${url.hash}`
 		: "/";
+};
 
 /**
  * Where to send a navigation that's offline and not cached: the offline page,

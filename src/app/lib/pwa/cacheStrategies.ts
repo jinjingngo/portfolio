@@ -2,7 +2,8 @@ import { isCacheable } from "./cachePolicy";
 
 /**
  * Cache strategies over small ports, so they run in Node tests with fakes.
- * The worker passes real `caches.open(...)` caches and `fetch`.
+ * The worker passes real `caches.open(...)` caches, `fetch`, and its fetch
+ * event's `waitUntil`.
  */
 
 /** The part of the Cache API the strategies use. */
@@ -15,6 +16,9 @@ export type CacheStore = {
 
 export type Fetcher = (request: Request) => Promise<Response>;
 
+/** Keeps the worker alive for background work (the fetch event's waitUntil). */
+export type WaitUntil = (work: Promise<unknown>) => void;
+
 const storable = (response: Response) =>
 	isCacheable({
 		status: response.status,
@@ -23,13 +27,24 @@ const storable = (response: Response) =>
 		redirected: response.redirected,
 	});
 
-/** Stores a copy of `response` if it may be cached; returns the original. */
-const remember = async (
+/**
+ * Stores a copy of `response` in the background if it may be cached, and
+ * returns the original at once: the page never waits for the cache write,
+ * and a failed write (e.g. storage full) never hides a good response.
+ */
+const remember = (
 	cache: CacheStore,
 	request: Request,
 	response: Response,
+	waitUntil: WaitUntil,
 ) => {
-	if (storable(response)) await cache.put(request, response.clone());
+	if (storable(response)) {
+		waitUntil(
+			cache.put(request, response.clone()).catch((error) => {
+				console.warn("Cache write failed", error);
+			}),
+		);
+	}
 	return response;
 };
 
@@ -46,13 +61,14 @@ export const cacheFirst = async (
 	request: Request,
 	cache: CacheStore,
 	fetcher: Fetcher,
+	waitUntil: WaitUntil,
 ) =>
 	(await cache.match(request)) ??
-	remember(cache, request, await fetcher(request));
+	remember(cache, request, await fetcher(request), waitUntil);
 
 /**
- * The network, unless it fails or takes longer than `timeoutMs`; then the
- * cached copy, then `fallback()` (e.g. the offline page).
+ * The network, unless it fails or takes longer than `timeoutMs` to answer;
+ * then the cached copy, then `fallback()` (e.g. the offline page).
  */
 export const networkFirst = async (
 	request: Request,
@@ -61,13 +77,13 @@ export const networkFirst = async (
 	options: {
 		timeoutMs: number;
 		fallback: () => Promise<Response | undefined>;
-		/** Lets a slow network response still update the cache after the timeout. */
-		waitUntil: (work: Promise<unknown>) => void;
+		waitUntil: WaitUntil;
 	},
 ) => {
 	const network = fetcher(request).then((response) =>
-		remember(cache, request, response),
+		remember(cache, request, response, options.waitUntil),
 	);
+	// A slow answer that arrives after the timeout still updates the cache.
 	options.waitUntil(network.catch(() => undefined));
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -90,11 +106,11 @@ export const staleWhileRevalidate = async (
 	request: Request,
 	cache: CacheStore,
 	fetcher: Fetcher,
-	waitUntil: (work: Promise<unknown>) => void,
+	waitUntil: WaitUntil,
 ) => {
 	const cached = await cache.match(request);
 	const network = fetcher(request).then((response) =>
-		remember(cache, request, response),
+		remember(cache, request, response, waitUntil),
 	);
 	if (cached) {
 		waitUntil(network.catch(() => undefined));

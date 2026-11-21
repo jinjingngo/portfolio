@@ -32,5 +32,19 @@
 			"Read(./.dev.vars)",
 			"Read(./.env*)"
 		]
+	},
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Write|Edit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "f=$(node -e 'let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>process.stdout.write(JSON.parse(s).tool_input?.file_path??\"\"))'); case \"$f\" in \"$CLAUDE_PROJECT_DIR\"/*) cd \"$CLAUDE_PROJECT_DIR\" && pnpm exec biome format --write --no-errors-on-unmatched \"$f\" >/dev/null 2>&1 ;; esac; exit 0",
+						"timeout": 30
+					}
+				]
+			}
+		]
 	}
 }

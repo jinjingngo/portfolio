@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { t } from "try";
-import { OFFLINE_PATH, safeSitePath } from "@/app/lib/pwa/cachePolicy";
+import {
+	isPagesCache,
+	OFFLINE_PATH,
+	safeSitePath,
+} from "@/app/lib/pwa/cachePolicy";
 
 /**
  * "Try again" back to the page that was asked for, and the pages this device
@@ -20,9 +24,7 @@ export function CachedPages() {
 		);
 		const load = async () => {
 			if (typeof caches === "undefined") return;
-			const names = (await caches.keys()).filter((name) =>
-				name.startsWith("jj-pages-"),
-			);
+			const names = (await caches.keys()).filter(isPagesCache);
 			const urls = await Promise.all(
 				names.map(async (name) =>
 					(await (await caches.open(name)).keys()).map(

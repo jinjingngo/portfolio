@@ -179,9 +179,31 @@ const offline = async (): Promise<Response> => {
 	throw new TypeError("Failed to fetch");
 };
 
+/** Collects background work so a test can wait for cache writes. */
+const background = () => {
+	const pending: Promise<unknown>[] = [];
+	return {
+		waitUntil: (work: Promise<unknown>) => {
+			pending.push(work);
+		},
+		settle: () => Promise.all(pending),
+	};
+};
+
+/** A cache whose writes always fail (e.g. storage full). */
+const fullCache = (): CacheStore => ({
+	match: async () => undefined,
+	put: async () => {
+		throw new DOMException("Quota exceeded", "QuotaExceededError");
+	},
+	keys: async () => [],
+	delete: async () => false,
+});
+
 describe("cacheFirst", () => {
 	it("fetches and stores once, then serves from the cache", async () => {
 		const { store, entries } = memoryCache();
+		const bg = background();
 		let fetches = 0;
 		const fetcher = async () => {
 			fetches++;
@@ -189,13 +211,24 @@ describe("cacheFirst", () => {
 		};
 		assert.equal(
 			await text(
-				await cacheFirst(req("/_next/static/a.js"), store, fetcher),
+				await cacheFirst(
+					req("/_next/static/a.js"),
+					store,
+					fetcher,
+					bg.waitUntil,
+				),
 			),
 			"chunk",
 		);
+		await bg.settle();
 		assert.equal(
 			await text(
-				await cacheFirst(req("/_next/static/a.js"), store, fetcher),
+				await cacheFirst(
+					req("/_next/static/a.js"),
+					store,
+					fetcher,
+					bg.waitUntil,
+				),
 			),
 			"chunk",
 		);
@@ -205,43 +238,74 @@ describe("cacheFirst", () => {
 
 	it("doesn't store errors", async () => {
 		const { store, entries } = memoryCache();
+		const bg = background();
 		const response = await cacheFirst(
 			req("/_next/static/gone.js"),
 			store,
 			async () => basic("missing", { status: 404 }),
+			bg.waitUntil,
 		);
+		await bg.settle();
 		assert.equal(response.status, 404);
 		assert.equal(entries.size, 0);
+	});
+
+	it("still returns the network response when the cache write fails", async () => {
+		const bg = background();
+		const response = await cacheFirst(
+			req("/_next/static/a.js"),
+			fullCache(),
+			async () => basic("chunk"),
+			bg.waitUntil,
+		);
+		assert.equal(await text(response), "chunk");
+		await bg.settle();
 	});
 });
 
 describe("networkFirst", () => {
 	const options = (
+		bg: ReturnType<typeof background>,
 		fallback = async () => undefined as Response | undefined,
 	) => ({
 		timeoutMs: 50,
 		fallback,
-		waitUntil: () => {},
+		waitUntil: bg.waitUntil,
 	});
 
 	it("uses and stores the network response when it's fast", async () => {
 		const { store, entries } = memoryCache();
+		const bg = background();
 		const response = await networkFirst(
 			req("/lab"),
 			store,
 			async () => basic("fresh"),
-			options(),
+			options(bg),
 		);
 		assert.equal(await text(response), "fresh");
+		await bg.settle();
 		assert.equal(entries.size, 1);
+	});
+
+	it("still returns a good network response when the cache write fails", async () => {
+		const bg = background();
+		const response = await networkFirst(
+			req("/lab"),
+			fullCache(),
+			async () => basic("fresh"),
+			options(bg, async () => basic("FALLBACK")),
+		);
+		assert.equal(await text(response), "fresh");
+		await bg.settle();
 	});
 
 	it("serves the cached page when offline", async () => {
 		const { store } = memoryCache();
+		const bg = background();
 		await store.put(req("/lab"), basic("cached"));
 		assert.equal(
 			await text(
-				await networkFirst(req("/lab"), store, offline, options()),
+				await networkFirst(req("/lab"), store, offline, options(bg)),
 			),
 			"cached",
 		);
@@ -249,39 +313,53 @@ describe("networkFirst", () => {
 
 	it("serves the cached page when the network is too slow", async () => {
 		const { store } = memoryCache();
+		const bg = background();
 		await store.put(req("/lab"), basic("cached"));
 		const slow = () =>
 			new Promise<Response>((resolve) =>
 				setTimeout(() => resolve(basic("late")), 300),
 			);
 		assert.equal(
-			await text(await networkFirst(req("/lab"), store, slow, options())),
+			await text(
+				await networkFirst(req("/lab"), store, slow, options(bg)),
+			),
 			"cached",
 		);
+		await bg.settle();
 	});
 
 	it("waits for a slow network when nothing is cached", async () => {
 		const { store } = memoryCache();
+		const bg = background();
 		const slow = () =>
 			new Promise<Response>((resolve) =>
 				setTimeout(() => resolve(basic("late")), 120),
 			);
 		assert.equal(
-			await text(await networkFirst(req("/new"), store, slow, options())),
+			await text(
+				await networkFirst(req("/new"), store, slow, options(bg)),
+			),
 			"late",
 		);
+		await bg.settle();
 	});
 
 	it("uses the fallback (offline page), then a 503, when offline with nothing cached", async () => {
 		const { store } = memoryCache();
+		const bg = background();
 		const page = await networkFirst(
 			req("/new"),
 			store,
 			offline,
-			options(async () => basic("offline page")),
+			options(bg, async () => basic("offline page")),
 		);
 		assert.equal(await text(page), "offline page");
-		const bare = await networkFirst(req("/new"), store, offline, options());
+		const bare = await networkFirst(
+			req("/new"),
+			store,
+			offline,
+			options(bg),
+		);
 		assert.equal(bare.status, 503);
 	});
 });
@@ -289,16 +367,17 @@ describe("networkFirst", () => {
 describe("staleWhileRevalidate", () => {
 	it("serves the cached copy at once and refreshes it in the background", async () => {
 		const { store } = memoryCache();
+		const bg = background();
 		await store.put(req("/icon-192.png"), basic("old"));
-		const pending: Promise<unknown>[] = [];
 		const response = await staleWhileRevalidate(
 			req("/icon-192.png"),
 			store,
 			async () => basic("new"),
-			(work) => pending.push(work),
+			bg.waitUntil,
 		);
 		assert.equal(await text(response), "old");
-		await Promise.all(pending);
+		await bg.settle();
+		await bg.settle();
 		assert.equal(
 			await text(await store.match(req("/icon-192.png"))),
 			"new",
@@ -307,26 +386,27 @@ describe("staleWhileRevalidate", () => {
 
 	it("fetches when nothing is cached, and survives a failed refresh", async () => {
 		const { store } = memoryCache();
+		const bg = background();
 		assert.equal(
 			await text(
 				await staleWhileRevalidate(
 					req("/a.png"),
 					store,
 					async () => basic("first"),
-					() => {},
+					bg.waitUntil,
 				),
 			),
 			"first",
 		);
-		const pending: Promise<unknown>[] = [];
+		await bg.settle();
 		const cached = await staleWhileRevalidate(
 			req("/a.png"),
 			store,
 			offline,
-			(work) => pending.push(work),
+			bg.waitUntil,
 		);
 		assert.equal(await text(cached), "first");
-		await Promise.all(pending);
+		await bg.settle();
 	});
 });
 
@@ -339,6 +419,26 @@ describe("trimCache", () => {
 		assert.deepEqual(
 			[...entries.keys()].map((url) => new URL(url).pathname),
 			["/3.png", "/4.png"],
+		);
+	});
+});
+
+describe("safeSitePath against browser URL quirks", () => {
+	it("refuses paths a browser would resolve to another site", () => {
+		for (const value of [
+			"/\\evil.example",
+			"/\t/evil.example",
+			"/\n/evil.example",
+			"/\\/evil.example",
+		]) {
+			assert.equal(safeSitePath(value), "/", JSON.stringify(value));
+		}
+	});
+
+	it("keeps ordinary paths with query and hash", () => {
+		assert.equal(
+			safeSitePath("/lab/web-push?a=1#b"),
+			"/lab/web-push?a=1#b",
 		);
 	});
 });

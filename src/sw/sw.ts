@@ -89,7 +89,12 @@ const respond = async (
 	const cache = await caches.open(CACHES[strategy.cache]);
 	try {
 		if (strategy.kind === "cache-first") {
-			const response = await cacheFirst(request, cache, network);
+			const response = await cacheFirst(
+				request,
+				cache,
+				network,
+				waitUntil,
+			);
 			waitUntil(trimCache(cache, CACHE_LIMITS.maxStatic));
 			return response;
 		}
@@ -114,6 +119,8 @@ const respond = async (
 				}
 				return (
 					(await caches.match(request)) ??
+					// e.g. "/?utm=x" offline: the saved "/" is better than the offline page.
+					(await caches.match(request, { ignoreSearch: true })) ??
 					Response.redirect(
 						new URL(offlineUrl(request.url), self.location.origin),
 						302,
