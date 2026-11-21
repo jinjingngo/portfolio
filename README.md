@@ -1,7 +1,8 @@
 # portfolio
 
 Source of [wujinjing.com](https://wujinjing.com): a personal site with a `/lab` of small
-experiments, such as a Web Push demo at `/lab/web-push`.
+experiments, such as a Web Push demo at `/lab/web-push` and a camera translator at
+`/lab/camera-translate`.
 
 Next.js 16 (App Router, React 19, Tailwind CSS 4), built with
 [OpenNext](https://opennext.js.org/cloudflare) and served as a Cloudflare Worker. It is also an
@@ -38,6 +39,13 @@ VAPID_SUBJECT="https://wujinjing.com"
 
 Use a dev-only key pair, not the production keys. Production keys are Cloudflare secrets.
 
+### Camera translate locally
+
+`/lab/camera-translate` uses Workers AI, which has no local mode: `pnpm dev` and `pnpm preview`
+call the real Cloudflare account (sign in with `pnpm exec wrangler login`) and spend the same
+daily free allowance as production (10,000 neurons, about 40 per photo). The site-wide daily
+cap applies locally too.
+
 ## Scripts
 
 | Command                       | What it does                                                    |
@@ -55,6 +63,7 @@ Use a dev-only key pair, not the production keys. Production keys are Cloudflare
 - `src/app/page.tsx`: home page
 - `src/app/lab/<experiment>/`: experiments; `/lab` lists each folder automatically
 - `src/app/api/push/*`: Web Push API (public key, subscribe, unsubscribe, send)
+- `src/app/api/translate/image`: camera translate API (Workers AI)
 - `src/app/lib/`: shared code (pure decisions are tested); `lib/server/` for Cloudflare bindings
 - `tests/`: unit tests
 - `public/`: static files, including the push service worker

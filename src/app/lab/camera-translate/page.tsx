@@ -1,0 +1,337 @@
+"use client";
+
+import Link from "next/link";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useClientId } from "@/app/hooks/useClientId";
+import {
+	loadImageFile,
+	readLastTarget,
+	requestTranslation,
+	toJpegDataUri,
+	writeLastTarget,
+} from "@/app/lib/translate/cameraTranslate";
+import {
+	defaultTargetLanguage,
+	isTargetLanguage,
+	TARGET_LANGUAGES,
+	type TargetLanguage,
+	type Translation,
+} from "@/app/lib/translate/translatePolicy";
+
+type Step = "idle" | "camera" | "translating" | "result" | "error";
+
+const buttonClass =
+	"rounded-full px-5 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gray-300 disabled:cursor-not-allowed disabled:opacity-40";
+const primary = `${buttonClass} bg-gray-900 text-white hover:bg-gray-700`;
+const secondary = `${buttonClass} border border-gray-300 bg-white text-gray-900 hover:bg-gray-50`;
+
+const stopTracks = (stream: MediaStream | null) => {
+	for (const track of stream?.getTracks() ?? []) track.stop();
+};
+
+/** Language names in the visitor's own language, e.g. "svenska" or "Swedish". */
+const useLanguageNames = () =>
+	useMemo(() => {
+		if (typeof Intl === "undefined" || !("DisplayNames" in Intl))
+			return null;
+		const locale =
+			typeof navigator === "undefined" ? "en" : navigator.language;
+		return new Intl.DisplayNames([locale, "en"], { type: "language" });
+	}, []);
+
+export default function CameraTranslatePage() {
+	const { id: clientId } = useClientId();
+	const names = useLanguageNames();
+	const nameOf = (code: string | null) =>
+		code ? (names?.of(code) ?? code) : "unknown";
+
+	const videoRef = useRef<HTMLVideoElement>(null);
+	const streamRef = useRef<MediaStream | null>(null);
+	const fileRef = useRef<HTMLInputElement>(null);
+
+	const [step, setStep] = useState<Step>("idle");
+	const [error, setError] = useState("");
+	const [target, setTarget] = useState<TargetLanguage>("en");
+	const [photo, setPhoto] = useState<string | null>(null);
+	const [result, setResult] = useState<Translation | null>(null);
+	const [shownOriginals, setShownOriginals] = useState<Set<number>>(
+		new Set(),
+	);
+
+	useEffect(() => {
+		setTarget(
+			defaultTargetLanguage(navigator.languages ?? [], readLastTarget()),
+		);
+	}, []);
+
+	const stopCamera = () => {
+		stopTracks(streamRef.current);
+		streamRef.current = null;
+	};
+	useEffect(() => () => stopTracks(streamRef.current), []);
+
+	const fail = (message: string) => {
+		stopCamera();
+		setError(message);
+		setStep("error");
+	};
+
+	const startCamera = async () => {
+		if (!navigator.mediaDevices?.getUserMedia) {
+			fileRef.current?.click();
+			return;
+		}
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({
+				video: { facingMode: { ideal: "environment" } },
+				audio: false,
+			});
+			streamRef.current = stream;
+			setStep("camera");
+			const video = videoRef.current;
+			if (!video) return;
+			video.srcObject = stream;
+			await video.play();
+		} catch {
+			fail(
+				"Camera access was blocked. Allow it in your browser, or choose a photo instead.",
+			);
+		}
+	};
+
+	const translate = async (image: string) => {
+		if (!clientId) return;
+		setPhoto(image);
+		setResult(null);
+		setShownOriginals(new Set());
+		setStep("translating");
+		try {
+			setResult(await requestTranslation(clientId, image, target));
+			setStep("result");
+		} catch (reason) {
+			fail(
+				reason instanceof Error
+					? reason.message
+					: "The photo could not be translated.",
+			);
+		}
+	};
+
+	const capture = () => {
+		const video = videoRef.current;
+		if (!video?.videoWidth) return;
+		const image = toJpegDataUri(video, video.videoWidth, video.videoHeight);
+		stopCamera();
+		translate(image);
+	};
+
+	const pickFile = async (event: ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0];
+		event.target.value = "";
+		if (!file) return;
+		try {
+			const image = await loadImageFile(file);
+			translate(
+				toJpegDataUri(image, image.naturalWidth, image.naturalHeight),
+			);
+		} catch (reason) {
+			fail(
+				reason instanceof Error
+					? reason.message
+					: "That photo could not be opened.",
+			);
+		}
+	};
+
+	const chooseTarget = (code: string) => {
+		if (!isTargetLanguage(code)) return;
+		setTarget(code);
+		writeLastTarget(code);
+	};
+
+	const toggleOriginal = (index: number) =>
+		setShownOriginals((current) => {
+			const next = new Set(current);
+			if (next.has(index)) next.delete(index);
+			else next.add(index);
+			return next;
+		});
+
+	const reset = () => {
+		stopCamera();
+		setPhoto(null);
+		setResult(null);
+		setError("");
+		setStep("idle");
+	};
+
+	return (
+		<div className="flex min-w-0 flex-1 flex-col gap-8">
+			<div>
+				<Link
+					className="text-sm underline decoration-wavy underline-offset-4"
+					href="/lab"
+				>
+					← /lab
+				</Link>
+				<h1 className="mt-5 text-4xl text-gray-900 md:text-5xl">
+					Camera Translate
+				</h1>
+				<p className="mt-3 max-w-2xl text-gray-600">
+					Point your camera at a sign, a menu or a label, take a
+					photo, and read it in your language.
+				</p>
+			</div>
+
+			<section className="w-full min-w-0 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
+				<div className="flex flex-col gap-5">
+					<label className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
+						Translate into
+						<select
+							value={target}
+							onChange={(event) =>
+								chooseTarget(event.target.value)
+							}
+							disabled={step === "translating"}
+							className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
+						>
+							{TARGET_LANGUAGES.map((code) => (
+								<option key={code} value={code}>
+									{nameOf(code)}
+								</option>
+							))}
+						</select>
+					</label>
+
+					<div className="relative overflow-hidden rounded-xl bg-gray-900">
+						<video
+							ref={videoRef}
+							playsInline
+							muted
+							className={
+								step === "camera" ? "block w-full" : "hidden"
+							}
+						/>
+						{photo && step !== "camera" && (
+							// biome-ignore lint/performance/noImgElement: a local data URI, not an optimisable asset
+							<img
+								src={photo}
+								alt="What you captured, with its translation below"
+								className="block w-full"
+							/>
+						)}
+						{step === "translating" && (
+							<div className="absolute inset-0 flex items-center justify-center bg-black/40 text-sm font-medium text-white">
+								Reading and translating…
+							</div>
+						)}
+						{step === "result" && result && (
+							<div className="absolute inset-x-0 bottom-0 max-h-[70%] overflow-y-auto bg-black/70 p-4 text-white backdrop-blur-sm">
+								{result.blocks.length === 0 ? (
+									<p className="text-sm">
+										No text found. Try again closer, with
+										more light.
+									</p>
+								) : (
+									<ul className="flex flex-col gap-2">
+										{result.blocks.map((block, index) => (
+											// biome-ignore lint/suspicious/noArrayIndexKey: one fixed list per result, never reordered
+											<li key={index}>
+												<button
+													type="button"
+													onClick={() =>
+														toggleOriginal(index)
+													}
+													className="text-left text-base leading-snug"
+												>
+													{shownOriginals.has(index)
+														? block.text
+														: block.translation}
+												</button>
+											</li>
+										))}
+									</ul>
+								)}
+							</div>
+						)}
+						{!photo && step !== "camera" && (
+							<div className="flex aspect-[4/3] items-center justify-center p-6 text-center text-sm text-gray-300">
+								Your photo will appear here.
+							</div>
+						)}
+					</div>
+
+					{step === "result" && result?.blocks.length ? (
+						<p className="text-sm text-gray-600">
+							Detected {nameOf(result.sourceLanguage)} →{" "}
+							{nameOf(target)}. Tap a line to see the original.
+						</p>
+					) : null}
+					{step === "error" && (
+						<p aria-live="polite" className="text-sm text-red-700">
+							{error}
+						</p>
+					)}
+
+					<div className="flex flex-wrap gap-3">
+						{step === "camera" ? (
+							<>
+								<button
+									type="button"
+									onClick={capture}
+									className={primary}
+								>
+									Take photo
+								</button>
+								<button
+									type="button"
+									onClick={reset}
+									className={secondary}
+								>
+									Cancel
+								</button>
+							</>
+						) : (
+							<>
+								<button
+									type="button"
+									onClick={startCamera}
+									disabled={
+										step === "translating" || !clientId
+									}
+									className={primary}
+								>
+									{photo ? "Retake" : "Open camera"}
+								</button>
+								<button
+									type="button"
+									onClick={() => fileRef.current?.click()}
+									disabled={
+										step === "translating" || !clientId
+									}
+									className={secondary}
+								>
+									Choose photo
+								</button>
+							</>
+						)}
+						<input
+							ref={fileRef}
+							type="file"
+							accept="image/*"
+							capture="environment"
+							onChange={pickFile}
+							className="hidden"
+						/>
+					</div>
+
+					<p className="text-xs text-gray-500">
+						Photos are sent to Cloudflare Workers AI to read and
+						translate, and are not stored. Limited to a few photos a
+						minute and a daily total for the whole site.
+					</p>
+				</div>
+			</section>
+		</div>
+	);
+}

@@ -15,6 +15,7 @@ import {
 	parseModelAnswer,
 	parseTranslateRequest,
 	quotaDecision,
+	scaleToFit,
 	TRANSLATE_LIMITS,
 	translateWindowStart,
 	utcDay,
@@ -299,5 +300,17 @@ describe("describeAiError", () => {
 		assert.equal(text.includes("base64"), false);
 		assert.match(text, /<image>/);
 		assert.ok(describeAiError("x".repeat(1000)).length <= 300);
+	});
+});
+
+describe("scaleToFit", () => {
+	it("shrinks the long edge to the limit and keeps the aspect ratio", () => {
+		assert.deepEqual(scaleToFit(4032, 3024), { width: 1280, height: 960 });
+		assert.deepEqual(scaleToFit(3024, 4032), { width: 960, height: 1280 });
+	});
+
+	it("never scales up and never returns zero", () => {
+		assert.deepEqual(scaleToFit(640, 480), { width: 640, height: 480 });
+		assert.deepEqual(scaleToFit(0, 0), { width: 1, height: 1 });
 	});
 });

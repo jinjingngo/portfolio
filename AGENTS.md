@@ -50,6 +50,9 @@ worked, not that production changed; `pnpm exec wrangler deployments list` shows
 - **Dev uses a local KV.** `pnpm dev` stores `PUSH_SUBSCRIPTIONS` under `.wrangler/state`,
   not in production. Don't add `"remote": true` back to the binding: it would point dev at
   real subscriber data. Local VAPID keys in `.dev.vars` are a dev-only pair.
+- **Workers AI is always remote.** The `AI` binding (camera translate) calls the real account
+  from `pnpm dev` and `pnpm preview` too, spending the shared daily allowance. Test with a
+  few photos, not loops; the translate limits live in `TRANSLATE_LIMITS`.
 - **Secrets** (`VAPID_PRIVATE_KEY`, etc.) live in Cloudflare and in `.dev.vars` locally.
   Never read, print or commit `.dev.vars` or `.env*` files.
 - `cloudflare-env.d.ts` is generated; don't edit it by hand.

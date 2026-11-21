@@ -78,6 +78,22 @@ export const defaultTargetLanguage = (
 	return "en";
 };
 
+/**
+ * Size to draw a photo at before upload: scaled down so its long edge is at
+ * most `maxEdge`, never scaled up, whole pixels.
+ */
+export const scaleToFit = (
+	width: number,
+	height: number,
+	maxEdge: number = TRANSLATE_LIMITS.maxImageEdge,
+) => {
+	const scale = Math.min(1, maxEdge / Math.max(width, height, 1));
+	return {
+		width: Math.max(1, Math.round(width * scale)),
+		height: Math.max(1, Math.round(height * scale)),
+	};
+};
+
 export type TranslateRequest = {
 	clientId: string;
 	/** A JPEG, PNG or WebP image as a base64 data URI. */
