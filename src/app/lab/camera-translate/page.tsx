@@ -175,6 +175,10 @@ export default function CameraTranslatePage() {
 		const file = event.target.files?.[0];
 		event.target.value = "";
 		if (!file) return;
+		// Busy while the new photo loads: the language picker is disabled and any
+		// translation still in flight for the previous photo is ignored.
+		requestRef.current++;
+		setStep("translating");
 		try {
 			const image = await loadImageFile(file);
 			translate(
