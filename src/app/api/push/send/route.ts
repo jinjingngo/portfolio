@@ -7,8 +7,10 @@ import { NextResponse } from "next/server";
 import { t } from "try";
 import {
 	deliveryStatus,
+	describeError,
 	parseNotification,
 	parseVapidPrivateKey,
+	pushServiceHost,
 } from "@/app/lib/push/pushPolicy";
 import { verifySendToken } from "@/app/lib/push/sendToken";
 import {
@@ -70,18 +72,36 @@ export const POST = async (request: Request) => {
 		payload: notification.value,
 	};
 
-	const pushRequest = await buildPushHTTPRequest({
-		privateJWK,
-		subscription:
-			stored.subscription as unknown as PushForgePushSubscription,
-		message,
-	});
+	const [built, buildError, pushRequest] = await t(
+		buildPushHTTPRequest({
+			privateJWK,
+			subscription:
+				stored.subscription as unknown as PushForgePushSubscription,
+			message,
+		}),
+	);
+	if (!built || buildError) {
+		console.error("[ERROR] Building push request failed", {
+			pushService: pushServiceHost(stored.subscription.endpoint),
+			error: describeError(buildError, stored.subscription.endpoint),
+		});
+		return fail("The notification could not be sent.", 502);
+	}
 
-	const response = await fetch(pushRequest.endpoint, {
-		method: "POST",
-		headers: pushRequest.headers,
-		body: pushRequest.body,
-	});
+	const [sent, sendError, response] = await t(
+		fetch(pushRequest.endpoint, {
+			method: "POST",
+			headers: pushRequest.headers,
+			body: pushRequest.body,
+		}),
+	);
+	if (!sent || sendError) {
+		console.error("[ERROR] Push service unreachable", {
+			pushService: pushServiceHost(pushRequest.endpoint),
+			error: describeError(sendError, pushRequest.endpoint),
+		});
+		return fail("The notification could not be sent.", 502);
+	}
 
 	if ([404, 410].includes(response.status)) {
 		await deletePushSubscription(body.clientId);
@@ -89,10 +109,10 @@ export const POST = async (request: Request) => {
 
 	if (!response.ok) {
 		const responseHeaders = Object.fromEntries(response.headers.entries());
-		const responseText = await response.text();
+		const [, , responseText] = await t(response.text());
 
 		console.error("[ERROR] Push delivery failed ", {
-			endpoint: pushRequest.endpoint,
+			pushService: pushServiceHost(pushRequest.endpoint),
 			status: response.status,
 			statusText: response.statusText,
 			headers: responseHeaders,

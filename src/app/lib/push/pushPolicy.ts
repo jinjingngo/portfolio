@@ -111,6 +111,24 @@ export const deliveryStatus = (pushServiceStatus: number) =>
 		: 502;
 
 /**
+ * The push service's host, safe to log. The full endpoint URL is a secret: it
+ * proves ownership when a browser replaces its subscription.
+ */
+export const pushServiceHost = (endpoint: string | undefined) =>
+	endpoint && URL.canParse(endpoint)
+		? new URL(endpoint).host
+		: "invalid-endpoint";
+
+/**
+ * An error as text safe to log: every occurrence of the endpoint is replaced,
+ * since some errors (e.g. "Invalid subscription endpoint: '…'") quote it.
+ */
+export const describeError = (error: unknown, endpoint: string | undefined) => {
+	const text = String(error);
+	return endpoint ? text.replaceAll(endpoint, "<endpoint>") : text;
+};
+
+/**
  * Parses the VAPID private key (a JWK stored as JSON), or null when it is
  * missing or invalid. Returns no error on purpose: JSON.parse's message quotes
  * the start of its input, which here is the secret, so callers can't log it.

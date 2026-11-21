@@ -3,11 +3,13 @@ import { describe, it } from "node:test";
 import {
 	decideSubscribe,
 	deliveryStatus,
+	describeError,
 	hasSendQuota,
 	isValidClientId,
 	PUSH_LIMITS,
 	parseNotification,
 	parseVapidPrivateKey,
+	pushServiceHost,
 	rateWindowStart,
 	toSameOriginPath,
 } from "../../src/app/lib/push/pushPolicy.ts";
@@ -154,6 +156,45 @@ describe("deliveryStatus", () => {
 		for (const status of [400, 401, 403, 404, 410, 413, 429, 500, 503]) {
 			assert.equal(deliveryStatus(status), 502);
 		}
+	});
+});
+
+describe("pushServiceHost", () => {
+	it("keeps only the host, never the secret path", () => {
+		const endpoint = "https://web.push.apple.com/QGuQyavXutnMH6Ivup";
+		assert.equal(pushServiceHost(endpoint), "web.push.apple.com");
+		assert.equal(pushServiceHost(endpoint).includes("QGuQ"), false);
+	});
+
+	it("does not echo an unparseable endpoint", () => {
+		assert.equal(
+			pushServiceHost("not a url secret-ish"),
+			"invalid-endpoint",
+		);
+	});
+});
+
+describe("describeError", () => {
+	const endpoint = "SECRET-endpoint-value";
+
+	it("replaces the endpoint wherever an error quotes it", () => {
+		const error = new Error(
+			`Invalid subscription endpoint: '${endpoint}' is not a valid URL ${endpoint}`,
+		);
+		const text = describeError(error, endpoint);
+		assert.equal(text.includes(endpoint), false);
+		assert.equal(
+			text,
+			"Error: Invalid subscription endpoint: '<endpoint>' is not a valid URL <endpoint>",
+		);
+	});
+
+	it("keeps errors that don't mention the endpoint", () => {
+		assert.equal(
+			describeError(new Error("Invalid JWK: missing 'd'"), endpoint),
+			"Error: Invalid JWK: missing 'd'",
+		);
+		assert.equal(describeError("plain", undefined), "plain");
 	});
 });
 
