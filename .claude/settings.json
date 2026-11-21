@@ -1,0 +1,31 @@
+{
+	"$schema": "https://json.schemastore.org/claude-code-settings.json",
+	"permissions": {
+		"allow": [
+			"Bash(npx biome check)",
+			"Bash(npx biome check:*)",
+			"Bash(npx tsc --noEmit)",
+			"Bash(npm run lint)",
+			"Bash(npm run lint:fix)"
+		],
+		"deny": [
+			"Bash(npm run deploy:*)",
+			"Bash(npm run upload:*)",
+			"Bash(pnpm run deploy:*)",
+			"Bash(pnpm run upload:*)",
+			"Bash(pnpm upload:*)",
+			"Bash(pnpm exec wrangler deploy:*)",
+			"Bash(pnpm exec wrangler secret:*)",
+			"Bash(pnpm wrangler deploy:*)",
+			"Bash(pnpm wrangler secret:*)",
+			"Bash(pnpm exec opennextjs-cloudflare deploy:*)",
+			"Bash(npx -y pnpm@10 run deploy:*)",
+			"Bash(npx -y pnpm@10 run upload:*)",
+			"Bash(npx wrangler deploy:*)",
+			"Bash(npx wrangler secret:*)",
+			"Bash(npx opennextjs-cloudflare deploy:*)",
+			"Read(./.dev.vars)",
+			"Read(./.env*)"
+		]
+	}
+}
