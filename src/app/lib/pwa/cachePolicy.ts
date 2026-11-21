@@ -181,30 +181,18 @@ export const staticAssetsIn = (html: string) => [
 ];
 
 /**
- * The page to save for offline use when Next navigates client-side (a
- * <Link> click fetches an RSC payload, not the page's HTML), or null. Only
- * real navigations count, not prefetches; the worker then saves the page's
- * HTML in the background so it opens offline like a page loaded directly.
+ * Whether a path is a page the worker saves for offline use (what a page
+ * load of it would be cached as). Used to vet WARM_PAGE messages.
  */
-export const pageToWarm = (
-	request: RequestInfo & { isPrefetch: boolean },
-	origin: string,
-) => {
-	if (request.method !== "GET" || !request.isRsc || request.isPrefetch)
-		return null;
-	if (request.mode === "navigate") return null;
-	const url = new URL(request.url);
-	if (url.origin !== origin) return null;
-	const path = url.pathname;
-	if (
-		path.startsWith("/api/") ||
-		path.startsWith("/_next/") ||
-		path.startsWith("/cdn-cgi/") ||
-		ALWAYS_FRESH.has(path)
-	) {
-		return null;
-	}
-	url.searchParams.delete("_rsc");
-	const search = url.searchParams.toString();
-	return search ? `${path}?${search}` : path;
-};
+export const isOfflinePage = (path: string, origin: string) =>
+	!ASSET_EXTENSION.test(new URL(path, origin).pathname) &&
+	strategyFor(
+		{
+			method: "GET",
+			url: new URL(path, origin).href,
+			mode: "navigate",
+			destination: "document",
+			isRsc: false,
+		},
+		origin,
+	).kind === "network-first";

@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import { Navbar } from "./components/navbar";
+import { OfflinePageSaver } from "./components/offlinePageSaver";
 import { PwaUpdatePrompt } from "./components/pwaUpdatePrompt";
 
 const montserrat = Montserrat({ subsets: ["latin"] });
@@ -44,6 +45,7 @@ export default function RootLayout({
 				</main>
 				<Navbar />
 				<PwaUpdatePrompt />
+				<OfflinePageSaver />
 			</body>
 		</html>
 	);

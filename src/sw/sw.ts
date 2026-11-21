@@ -8,11 +8,11 @@ import {
 	CACHE_LIMITS,
 	cacheNames,
 	isCacheable,
+	isOfflinePage,
 	OFFLINE_PATH,
 	obsoleteCaches,
 	offlineUrl,
 	PRECACHE_PATHS,
-	pageToWarm,
 	type Strategy,
 	staticAssetsIn,
 	strategyFor,
@@ -31,6 +31,7 @@ import {
 	parseWorkerMessage,
 	SKIP_WAITING,
 	safeNotificationPath,
+	WARM_PAGE,
 } from "../app/lib/pwa/swProtocol";
 
 declare const self: ServiceWorkerGlobalScope;
@@ -138,7 +139,7 @@ const respond = async (
 };
 
 /**
- * Saves a page's HTML for offline use after a client-side navigation to it,
+ * Saves a page's HTML for offline use after a client-side navigation to it (WARM_PAGE),
  * unless this version already has it. Background work: failures only log.
  */
 const warmPage = async (path: string) => {
@@ -161,32 +162,18 @@ const responseInfo = (response: Response) => ({
 
 self.addEventListener("fetch", (event) => {
 	const { request } = event;
-	const info = {
-		method: request.method,
-		url: request.url,
-		mode: request.mode,
-		destination: request.destination,
-		isRsc: request.headers.has("RSC"),
-	};
-	const strategy = strategyFor(info, self.location.origin);
+	const strategy = strategyFor(
+		{
+			method: request.method,
+			url: request.url,
+			mode: request.mode,
+			destination: request.destination,
+			isRsc: request.headers.has("RSC"),
+		},
+		self.location.origin,
+	);
 	// Network-only: don't intervene at all; the browser handles it as usual.
-	if (strategy.kind === "network-only") {
-		const page = pageToWarm(
-			{
-				...info,
-				isPrefetch: request.headers.has("Next-Router-Prefetch"),
-			},
-			self.location.origin,
-		);
-		if (page) {
-			event.waitUntil(
-				warmPage(page).catch((error) =>
-					console.warn("Couldn't save page for offline use", error),
-				),
-			);
-		}
-		return;
-	}
+	if (strategy.kind === "network-only") return;
 	event.respondWith(respond(strategy, event));
 });
 
@@ -194,6 +181,15 @@ self.addEventListener("message", (event) => {
 	const message = parseWorkerMessage(event.data);
 	if (message?.type === SKIP_WAITING) {
 		event.waitUntil(self.skipWaiting());
+		return;
+	}
+	if (message?.type === WARM_PAGE) {
+		if (!isOfflinePage(message.path, self.location.origin)) return;
+		event.waitUntil(
+			warmPage(message.path).catch((error) =>
+				console.warn("Couldn't save page for offline use", error),
+			),
+		);
 		return;
 	}
 	if (message?.type === GET_VERSION) {
