@@ -23,7 +23,7 @@ run install scripts are listed under `allowBuilds` in `pnpm-workspace.yaml`.
 | Task                     | Command                                            |
 | ------------------------ | -------------------------------------------------- |
 | Lint + format check      | `pnpm lint` (fix: `pnpm lint:fix`)                 |
-| Typecheck                | `pnpm exec tsc --noEmit`                           |
+| Typecheck                | `pnpm typecheck` (app + service worker)            |
 | Tests                    | `pnpm test` (node:test over `tests/**/*.test.ts`)  |
 | Dev server               | `pnpm dev`                                         |
 | Regenerate binding types | `pnpm cf:typegen` (after editing `wrangler.jsonc`) |
@@ -66,6 +66,19 @@ only be applied by the `main` deploy. A new binding must be added to `previews` 
 - **Secrets** (`VAPID_PRIVATE_KEY`, etc.) live in Cloudflare and in `.dev.vars` locally.
   Never read, print or commit `.dev.vars` or `.env*` files.
 - `cloudflare-env.d.ts` is generated; don't edit it by hand.
+
+## Service worker
+
+- One worker for the whole site: `src/sw/sw.ts` (own `tsconfig.json` with the `webworker` lib),
+  bundled to `public/sw.js` by `pnpm build:sw`, which `build` and `dev` run first. `public/sw.js`
+  is generated and git-ignored; edit the TypeScript. Its decisions live in
+  `src/app/lib/pwa/swProtocol.ts` (tested).
+- Registered on every page in production builds only (`PwaUpdatePrompt` in the root layout), so
+  test it with `pnpm preview`, not `pnpm dev`. The Claude browser pane can't register service
+  workers; use real Chrome or Safari.
+- A new deploy's worker waits until the user taps Reload in the "new version" prompt (or every
+  tab closes). Don't call `skipWaiting()` on install: it would swap code under open pages.
+- `public/webPushServiceWorker.js` is a redirect to `/sw.js` for browsers registered before #82.
 
 ## Code style
 

@@ -1,4 +1,5 @@
 import { t } from "try";
+import { registerServiceWorker } from "../pwa/registerServiceWorker";
 import {
 	classifySendStatus,
 	expiredEndpointOf,
@@ -89,9 +90,13 @@ export const subscribeToPush = async (clientId: string) => {
 		throw new Error("Notification permission was not granted.");
 	}
 
-	const registration = await navigator.serviceWorker.register(
-		"/webPushServiceWorker.js",
-	);
+	if (!(await registerServiceWorker())) {
+		throw new Error(
+			"Push notifications are not supported in this browser.",
+		);
+	}
+	// Subscribing needs an active worker; on a first visit it may still be installing.
+	const registration = await navigator.serviceWorker.ready;
 
 	const existingSubscription =
 		await registration.pushManager.getSubscription();

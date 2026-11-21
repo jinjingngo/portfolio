@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!!cloudflare-env.d.ts"]
+		"includes": ["**", "!!cloudflare-env.d.ts", "!!public/sw.js"]
 	},
 	"formatter": {
 		"enabled": true,
