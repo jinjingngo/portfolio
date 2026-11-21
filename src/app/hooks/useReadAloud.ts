@@ -12,6 +12,8 @@ import {
 } from "@/app/lib/translate/speechPolicy";
 
 const SLOW_KEY = "JJ:READ_ALOUD_SLOW";
+/** How long to wait for a late voice list before saying a language has no voice. */
+const VOICES_WAIT_MS = 1500;
 
 /**
  * Read-aloud state for one language: whether speech works here, the voice
@@ -22,6 +24,8 @@ export const useReadAloud = (languageCode: string | null) => {
 	const stopRef = useRef<(() => void) | null>(null);
 	const [supported, setSupported] = useState(false);
 	const [voices, setVoices] = useState<VoiceInfo[]>([]);
+	/** True once the voice list has had a chance to load (Chrome loads it late). */
+	const [voicesLoaded, setVoicesLoaded] = useState(false);
 	const [playing, setPlaying] = useState<number | null>(null);
 	const [slow, setSlowState] = useState(false);
 
@@ -32,16 +36,36 @@ export const useReadAloud = (languageCode: string | null) => {
 		setSupported(true);
 		const [ok, , saved] = t(() => localStorage.getItem(SLOW_KEY));
 		setSlowState(ok && saved === "1");
-		const load = () => setVoices(speaker.voices());
+		const load = () => {
+			const installed = speaker.voices();
+			setVoices(installed);
+			if (installed.length > 0) setVoicesLoaded(true);
+		};
 		load();
-		const unsubscribe = speaker.onVoicesChanged(load);
+		const unsubscribe = speaker.onVoicesChanged(() => {
+			load();
+			setVoicesLoaded(true);
+		});
+		const giveUp = setTimeout(() => setVoicesLoaded(true), VOICES_WAIT_MS);
 		return () => {
 			unsubscribe();
+			clearTimeout(giveUp);
 			stopRef.current?.();
 		};
 	}, []);
 
 	const voice = pickVoice(voices, languageCode);
+	const voiceUri = voice?.uri ?? null;
+
+	// Leaving the result (retake, choose photo, error) or a change of language
+	// or voice stops whatever was playing, whichever path caused it.
+	useEffect(() => {
+		if (!languageCode || !voiceUri) return;
+		return () => {
+			stopRef.current?.();
+			stopRef.current = null;
+		};
+	}, [languageCode, voiceUri]);
 
 	const stop = () => {
 		stopRef.current?.();
@@ -55,7 +79,7 @@ export const useReadAloud = (languageCode: string | null) => {
 		stop();
 		stopRef.current = readLines(speaker, lines, {
 			lang: voice.lang,
-			voiceName: voice.name,
+			voiceUri: voice.uri,
 			rate: speechRate(slow),
 			onLine: setPlaying,
 		});
@@ -66,5 +90,15 @@ export const useReadAloud = (languageCode: string | null) => {
 		t(() => localStorage.setItem(SLOW_KEY, value ? "1" : "0"));
 	};
 
-	return { supported, voice, playing, slow, setSlow, play, stop };
+	return {
+		supported,
+		/** False while voices may still be loading; don't claim "no voice" yet. */
+		voicesLoaded,
+		voice,
+		playing,
+		slow,
+		setSlow,
+		play,
+		stop,
+	};
 };

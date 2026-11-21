@@ -19,6 +19,7 @@ const voice = (
 	localService = true,
 	isDefault = false,
 ): VoiceInfo => ({
+	uri: `${name}:${lang}`,
 	lang,
 	name,
 	localService,
@@ -51,6 +52,11 @@ describe("pickVoice", () => {
 		assert.equal(pickVoice(voices, "th"), null);
 		assert.equal(pickVoice(voices, null), null);
 		assert.equal(pickVoice([], "en"), null);
+	});
+
+	it("tells apart voices that share a name across languages (Apple's novelty voices)", () => {
+		const shared = [voice("en-US", "Flo"), voice("ja-JP", "Flo")];
+		assert.equal(pickVoice(shared, "ja")?.uri, "Flo:ja-JP");
 	});
 
 	it("falls back to any voice of the language without a preferred region", () => {
@@ -95,7 +101,7 @@ const fakeSpeaker = () => {
 
 const options = (lines: (number | null)[]) => ({
 	lang: "ja-JP",
-	voiceName: "Kyoko",
+	voiceUri: "Kyoko:ja-JP",
 	rate: 0.6,
 	onLine: (index: number | null) => lines.push(index),
 });
@@ -113,10 +119,10 @@ describe("readLines", () => {
 		);
 		assert.equal(cancels(), 1);
 		assert.deepEqual(
-			queue.map((u) => [u.text, u.lang, u.voiceName, u.rate]),
+			queue.map((u) => [u.text, u.lang, u.voiceUri, u.rate]),
 			[
-				["取扱注意", "ja-JP", "Kyoko", 0.6],
-				["水濡れ厳禁", "ja-JP", "Kyoko", 0.6],
+				["取扱注意", "ja-JP", "Kyoko:ja-JP", 0.6],
+				["水濡れ厳禁", "ja-JP", "Kyoko:ja-JP", 0.6],
 			],
 		);
 	});

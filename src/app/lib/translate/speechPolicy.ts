@@ -5,6 +5,8 @@
 
 /** What the core needs to know about an installed voice. */
 export type VoiceInfo = {
+	/** Unique id; names repeat across languages on Apple devices. */
+	uri: string;
 	/** BCP 47 tag, e.g. "ja-JP" (some browsers use "ja_JP"). */
 	lang: string;
 	name: string;

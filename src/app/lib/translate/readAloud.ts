@@ -8,7 +8,8 @@ import type { VoiceInfo } from "./speechPolicy";
 export type Utterance = {
 	text: string;
 	lang: string;
-	voiceName: string | null;
+	/** VoiceInfo.uri of the voice to use, or null for the browser's choice. */
+	voiceUri: string | null;
 	rate: number;
 	onStart: () => void;
 	onEnd: () => void;
@@ -31,9 +32,13 @@ export const browserSpeaker = (): Speaker | null => {
 		return null;
 	const synth = window.speechSynthesis;
 	const installed = () => synth.getVoices();
+	// Chrome can garbage-collect a queued utterance before its end event
+	// fires; holding them here until they finish keeps the events coming.
+	const queued = new Set<SpeechSynthesisUtterance>();
 	return {
 		voices: () =>
 			installed().map((voice) => ({
+				uri: voice.voiceURI,
 				lang: voice.lang,
 				name: voice.name,
 				localService: voice.localService,
@@ -47,22 +52,31 @@ export const browserSpeaker = (): Speaker | null => {
 			const spoken = new SpeechSynthesisUtterance(utterance.text);
 			spoken.lang = utterance.lang;
 			spoken.rate = utterance.rate;
+			// By unique id: Apple reuses voice names across languages.
 			const voice = installed().find(
-				(v) => v.name === utterance.voiceName,
+				(v) => v.voiceURI === utterance.voiceUri,
 			);
 			if (voice) spoken.voice = voice;
+			const finish = () => {
+				queued.delete(spoken);
+				utterance.onEnd();
+			};
 			spoken.onstart = utterance.onStart;
-			spoken.onend = utterance.onEnd;
-			spoken.onerror = utterance.onEnd;
+			spoken.onend = finish;
+			spoken.onerror = finish;
+			queued.add(spoken);
 			synth.speak(spoken);
 		},
-		cancel: () => synth.cancel(),
+		cancel: () => {
+			synth.cancel();
+			queued.clear();
+		},
 	};
 };
 
 export type ReadOptions = {
 	lang: string;
-	voiceName: string | null;
+	voiceUri: string | null;
 	rate: number;
 	/** The line now being read, or null when reading has finished or stopped. */
 	onLine: (index: number | null) => void;
@@ -85,7 +99,7 @@ export const readLines = (
 		speaker.speak({
 			text: line.text,
 			lang: options.lang,
-			voiceName: options.voiceName,
+			voiceUri: options.voiceUri,
 			rate: options.rate,
 			onStart: () => {
 				if (active) options.onLine(line.index);

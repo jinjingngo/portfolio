@@ -318,6 +318,7 @@ export default function CameraTranslatePage() {
 										see the original.
 									</p>
 									{readAloud.supported &&
+										readAloud.voicesLoaded &&
 										!readAloud.voice && (
 											<p className="text-sm text-gray-500">
 												No voice for{" "}
