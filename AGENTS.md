@@ -36,8 +36,9 @@ preview URL of the PR instead.
 
 - **Merging to `main` deploys production.** Never merge, and never run `pnpm run deploy`
   or `pnpm run upload`, unless the owner asks in that conversation.
-- **The dev server uses the production KV.** `PUSH_SUBSCRIPTIONS` is bound with
-  `"remote": true`, so local writes and deletes hit real subscriber data.
+- **Dev uses a local KV.** `pnpm dev` stores `PUSH_SUBSCRIPTIONS` under `.wrangler/state`,
+  not in production. Don't add `"remote": true` back to the binding: it would point dev at
+  real subscriber data. Local VAPID keys in `.dev.vars` are a dev-only pair.
 - **Secrets** (`VAPID_PRIVATE_KEY`, etc.) live in Cloudflare and in `.dev.vars` locally.
   Never read, print or commit `.dev.vars` or `.env*` files.
 - `cloudflare-env.d.ts` is generated; don't edit it by hand.

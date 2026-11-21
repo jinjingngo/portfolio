@@ -32,8 +32,7 @@
 	"kv_namespaces": [
 		{
 			"binding": "PUSH_SUBSCRIPTIONS",
-			"id": "053d4fa52f49449cbc066b48435b5a6f",
-			"remote": true
+			"id": "053d4fa52f49449cbc066b48435b5a6f"
 		}
 	]
 }
