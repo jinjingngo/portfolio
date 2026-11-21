@@ -1,4 +1,6 @@
 import { t } from "try";
+import { MAX_CLIENT_ID_LENGTH } from "../clientId";
+import { type Decision, reject } from "../decision";
 
 /**
  * Pure rules for who may send which push notification. No I/O, no clock:
@@ -7,7 +9,7 @@ import { t } from "try";
 
 /** Push limits; the one place these numbers live. */
 export const PUSH_LIMITS = Object.freeze({
-	maxClientIdLength: 128,
+	maxClientIdLength: MAX_CLIENT_ID_LENGTH,
 	maxTitleLength: 100,
 	maxMessageLength: 300,
 	sendsPerWindow: 5,
@@ -17,9 +19,7 @@ export const PUSH_LIMITS = Object.freeze({
 	sendTokenBytes: 32,
 });
 
-export type Decision<T> =
-	| { ok: true; value: T }
-	| { ok: false; error: string; status: number };
+export type { Decision } from "../decision";
 
 export type NotificationPayload = {
 	title: string;
@@ -28,13 +28,7 @@ export type NotificationPayload = {
 	url: string;
 };
 
-const reject = (error: string, status: number) =>
-	({ ok: false, error, status }) as const;
-
-export const isValidClientId = (clientId: unknown): clientId is string =>
-	typeof clientId === "string" &&
-	clientId.length > 0 &&
-	clientId.length <= PUSH_LIMITS.maxClientIdLength;
+export { isValidClientId } from "../clientId";
 
 /**
  * Resolves `url` against `origin` and returns it as a relative path, or null

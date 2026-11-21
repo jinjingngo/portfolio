@@ -36,12 +36,18 @@ are local); the Cloudflare build on the PR is the check for the Worker bundle.
 Cloudflare Workers Builds runs on every push:
 
 - **`main`**: `pnpm run deploy` (build, then deploy). Merging to `main` puts it live.
-- **Other branches**: `pnpm run upload` (build, then upload a version). Each gets a preview
-  URL (`<version>-portfolio.jinjingwu.workers.dev`), behind Cloudflare Access.
+- **Other branches**: `pnpm run upload:preview` (build, then `wrangler preview`). Each branch
+  gets a Worker Preview at `<branch>-portfolio.jinjingwu.workers.dev`, behind Cloudflare Access.
+  Previews use the bindings in the `previews` block of `wrangler.jsonc`: a preview-only KV, their
+  own `TranslateQuota` storage, and the real Workers AI account.
 
 These commands are set in the Cloudflare dashboard (Workers → portfolio → Settings → Builds),
-not in the repo. On other branches a green "Workers Builds" check means the build and upload
+not in the repo. On other branches a green "Workers Builds" check means the build and preview
 worked, not that production changed; `pnpm exec wrangler deployments list` shows what is live.
+
+Because the Worker implements a Durable Object, Cloudflare no longer generates per-version
+URLs (`pnpm run upload` / `wrangler versions upload`), and a new Durable Object migration can
+only be applied by the `main` deploy. A new binding must be added to `previews` too.
 
 ## Danger zones
 
@@ -50,6 +56,13 @@ worked, not that production changed; `pnpm exec wrangler deployments list` shows
 - **Dev uses a local KV.** `pnpm dev` stores `PUSH_SUBSCRIPTIONS` under `.wrangler/state`,
   not in production. Don't add `"remote": true` back to the binding: it would point dev at
   real subscriber data. Local VAPID keys in `.dev.vars` are a dev-only pair.
+- **Workers AI is always remote.** The `AI` binding (camera translate) calls the real account
+  from `pnpm preview` too, spending the shared daily allowance. Test with a few photos, not
+  loops; the translate limits live in `TRANSLATE_LIMITS`.
+- **`worker.ts` is the Worker entry.** It wraps OpenNext's generated `.open-next/worker.js` and
+  exports the `TranslateQuota` Durable Object. `pnpm dev` can't run Durable Objects, so camera
+  translate only works under `pnpm preview` locally. Adding a Durable Object class needs a new
+  entry in `migrations` in `wrangler.jsonc`.
 - **Secrets** (`VAPID_PRIVATE_KEY`, etc.) live in Cloudflare and in `.dev.vars` locally.
   Never read, print or commit `.dev.vars` or `.env*` files.
 - `cloudflare-env.d.ts` is generated; don't edit it by hand.
