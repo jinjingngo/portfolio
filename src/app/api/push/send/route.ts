@@ -5,7 +5,11 @@ import {
 } from "@pushforge/builder";
 import { NextResponse } from "next/server";
 import { t } from "try";
-import { deliveryStatus, parseNotification } from "@/app/lib/push/pushPolicy";
+import {
+	deliveryStatus,
+	parseNotification,
+	parseVapidPrivateKey,
+} from "@/app/lib/push/pushPolicy";
 import { verifySendToken } from "@/app/lib/push/sendToken";
 import {
 	consumeSendQuota,
@@ -51,14 +55,9 @@ export const POST = async (request: Request) => {
 
 	const { env } = await getCloudflareContext();
 
-	const [keyOk, keyError, privateJWK] = t(
-		(): JsonWebKey => JSON.parse(env.VAPID_PRIVATE_KEY ?? ""),
-	);
-	if (!keyOk || keyError || !privateJWK) {
-		console.error(
-			"[ERROR] VAPID_PRIVATE_KEY is missing or not valid JSON",
-			keyError,
-		);
+	const privateJWK = parseVapidPrivateKey(env.VAPID_PRIVATE_KEY);
+	if (!privateJWK) {
+		console.error("[ERROR] VAPID_PRIVATE_KEY is missing or not valid JSON");
 		return fail("Push notifications are not configured.", 500);
 	}
 

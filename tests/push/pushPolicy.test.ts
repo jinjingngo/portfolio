@@ -7,6 +7,7 @@ import {
 	isValidClientId,
 	PUSH_LIMITS,
 	parseNotification,
+	parseVapidPrivateKey,
 	rateWindowStart,
 	toSameOriginPath,
 } from "../../src/app/lib/push/pushPolicy.ts";
@@ -152,6 +153,26 @@ describe("deliveryStatus", () => {
 	it("maps push-service failures to 502, never to our own 401", () => {
 		for (const status of [400, 401, 403, 404, 410, 413, 429, 500, 503]) {
 			assert.equal(deliveryStatus(status), 502);
+		}
+	});
+});
+
+describe("parseVapidPrivateKey", () => {
+	it("parses a JWK stored as JSON", () => {
+		const jwk = { kty: "EC", crv: "P-256", x: "x", y: "y", d: "d" };
+		assert.deepEqual(parseVapidPrivateKey(JSON.stringify(jwk)), jwk);
+	});
+
+	it("returns null, never an error quoting the secret, for invalid values", () => {
+		for (const raw of [
+			undefined,
+			"",
+			"SECRETKEYNOTJSON",
+			"null",
+			"42",
+			'"text"',
+		]) {
+			assert.equal(parseVapidPrivateKey(raw), null);
 		}
 	});
 });
