@@ -1,6 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"main": ".open-next/worker.js",
+	// worker.ts wraps OpenNext's .open-next/worker.js and adds the Durable Objects.
+	"main": "worker.ts",
 	"name": "portfolio",
 	"compatibility_date": "2026-02-25",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -34,6 +35,13 @@
 	"ai": {
 		"binding": "AI"
 	},
+	// Exact daily/per-client caps for camera translate, one object per UTC day.
+	"durable_objects": {
+		"bindings": [
+			{ "name": "TRANSLATE_QUOTA", "class_name": "TranslateQuota" }
+		]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["TranslateQuota"] }],
 	"kv_namespaces": [
 		{
 			"binding": "PUSH_SUBSCRIPTIONS",

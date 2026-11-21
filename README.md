@@ -41,11 +41,12 @@ Use a dev-only key pair, not the production keys. Production keys are Cloudflare
 
 ### Camera translate locally
 
-`/lab/camera-translate` uses Workers AI, which has no local mode: `pnpm dev` and `pnpm preview`
-call the real Cloudflare account (sign in with `pnpm exec wrangler login`) and spend the same
-daily free allowance as production (10,000 neurons, about 40 per photo). Local runs keep their
-own daily count in the local KV, so they spend the shared allowance without counting toward
-production's cap.
+`/lab/camera-translate` needs `pnpm preview`: its daily cap is a Durable Object defined in
+`worker.ts`, which `pnpm dev` doesn't run (the API answers 503 there). Workers AI has no local
+mode, so `pnpm preview` calls the real Cloudflare account (sign in with
+`pnpm exec wrangler login`) and spends the same daily free allowance as production (10,000
+neurons, about 40 per photo). Local runs keep their
+own daily count, so they spend the shared allowance without counting toward production's cap.
 
 ## Scripts
 

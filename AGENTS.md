@@ -51,8 +51,12 @@ worked, not that production changed; `pnpm exec wrangler deployments list` shows
   not in production. Don't add `"remote": true` back to the binding: it would point dev at
   real subscriber data. Local VAPID keys in `.dev.vars` are a dev-only pair.
 - **Workers AI is always remote.** The `AI` binding (camera translate) calls the real account
-  from `pnpm dev` and `pnpm preview` too, spending the shared daily allowance. Test with a
-  few photos, not loops; the translate limits live in `TRANSLATE_LIMITS`.
+  from `pnpm preview` too, spending the shared daily allowance. Test with a few photos, not
+  loops; the translate limits live in `TRANSLATE_LIMITS`.
+- **`worker.ts` is the Worker entry.** It wraps OpenNext's generated `.open-next/worker.js` and
+  exports the `TranslateQuota` Durable Object. `pnpm dev` can't run Durable Objects, so camera
+  translate only works under `pnpm preview` locally. Adding a Durable Object class needs a new
+  entry in `migrations` in `wrangler.jsonc`.
 - **Secrets** (`VAPID_PRIVATE_KEY`, etc.) live in Cloudflare and in `.dev.vars` locally.
   Never read, print or commit `.dev.vars` or `.env*` files.
 - `cloudflare-env.d.ts` is generated; don't edit it by hand.

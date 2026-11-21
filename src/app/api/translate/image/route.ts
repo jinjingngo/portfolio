@@ -1,7 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 import { t } from "try";
-import { consumeTranslateQuota } from "@/app/lib/server/translateKV";
+import { consumeTranslateQuota } from "@/app/lib/server/translateQuota";
 import {
 	answerOf,
 	buildModelInput,

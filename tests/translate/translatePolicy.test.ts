@@ -359,3 +359,56 @@ describe("request size limits agree", () => {
 		assert.equal(checkBodySize(String(Buffer.byteLength(body))).ok, true);
 	});
 });
+
+describe("consumeQuota", async () => {
+	const { consumeQuota, quotaObjectName } = await import(
+		"../../src/app/lib/translate/translateQuota.ts"
+	);
+	const memory = () => {
+		const store = new Map<string, number>();
+		return {
+			store,
+			get: async (key: string) => store.get(key),
+			put: async (entries: Record<string, number>) => {
+				for (const [key, value] of Object.entries(entries))
+					store.set(key, value);
+			},
+		};
+	};
+	const now = Date.UTC(2026, 10, 21, 12, 0, 0);
+
+	it("counts each allowed translation for the day and the client window", async () => {
+		const storage = memory();
+		assert.equal((await consumeQuota(storage, "a", now)).ok, true);
+		assert.equal((await consumeQuota(storage, "b", now)).ok, true);
+		assert.equal(storage.store.get("day"), 2);
+		assert.equal(
+			storage.store.get(`client:a:${translateWindowStart(now)}`),
+			1,
+		);
+	});
+
+	it("refuses the client's 7th in a window but allows it in the next window", async () => {
+		const storage = memory();
+		for (let i = 0; i < TRANSLATE_LIMITS.translationsPerWindow; i++) {
+			assert.equal((await consumeQuota(storage, "a", now)).ok, true);
+		}
+		const blocked = await consumeQuota(storage, "a", now);
+		assert.equal(!blocked.ok && blocked.status, 429);
+		const nextWindow = now + TRANSLATE_LIMITS.windowSeconds * 1000;
+		assert.equal((await consumeQuota(storage, "a", nextWindow)).ok, true);
+	});
+
+	it("stops everyone at the daily cap and writes nothing when refusing", async () => {
+		const storage = memory();
+		storage.store.set("day", TRANSLATE_LIMITS.dailyCap);
+		const refused = await consumeQuota(storage, "new-client", now);
+		assert.match(!refused.ok ? refused.error : "", /Daily limit/);
+		assert.equal(storage.store.get("day"), TRANSLATE_LIMITS.dailyCap);
+		assert.equal(storage.store.size, 1);
+	});
+
+	it("names one quota object per UTC day", () => {
+		assert.equal(quotaObjectName(now), "translate-quota:2026-11-21");
+	});
+});
