@@ -20,12 +20,12 @@ OpenNext and served as a Cloudflare Worker (`wrangler.jsonc`).
 Package manager is pnpm 12 (`pnpm install --frozen-lockfile`). Dependencies allowed to
 run install scripts are listed under `allowBuilds` in `pnpm-workspace.yaml`.
 
-| Task | Command |
-| --- | --- |
-| Lint + format check | `npx biome check` (fix: `npm run lint:fix`) |
-| Typecheck | `npx tsc --noEmit` |
-| Tests | `npm test` (node:test over `tests/**/*.test.ts`) |
-| Dev server | `npm run dev` |
+| Task                     | Command                                               |
+| ------------------------ | ----------------------------------------------------- |
+| Lint + format check      | `npx biome check` (fix: `npm run lint:fix`)           |
+| Typecheck                | `npx tsc --noEmit`                                    |
+| Tests                    | `npm test` (node:test over `tests/**/*.test.ts`)      |
+| Dev server               | `npm run dev`                                         |
 | Regenerate binding types | `npm run cf:typegen` (after editing `wrangler.jsonc`) |
 
 Run lint, typecheck and tests before every commit. `next build` needs Cloudflare credentials
