@@ -16,9 +16,11 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open <http://localhost:3000>. `pnpm dev:https` serves localhost over HTTPS with a self-signed
-certificate trusted only on this machine; other devices must trust it before service workers
-and push work there.
+Open <http://localhost:3000>. `pnpm dev:https` serves over HTTPS with a certificate
+from a local CA (mkcert) that only this machine trusts. To test push on a phone, run
+`pnpm dev:https --hostname <your LAN IP>` so the certificate covers that address, and install
+and trust the CA's `rootCA.pem` on the phone. Next prints that folder when it creates the
+certificate ("CA Root certificate created in …").
 
 The dev server uses local Cloudflare bindings: push subscriptions live in a local KV under
 `.wrangler/state`, never in production.
