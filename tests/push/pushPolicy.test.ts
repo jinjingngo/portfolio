@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	decideSubscribe,
+	deliveryStatus,
 	hasSendQuota,
 	isValidClientId,
 	PUSH_LIMITS,
@@ -139,5 +140,18 @@ describe("decideSubscribe", () => {
 		const decision = decide(true, false, false);
 		assert.equal(decision.ok, false);
 		assert.equal(!decision.ok && decision.status, 403);
+	});
+});
+
+describe("deliveryStatus", () => {
+	it("passes push-service successes through", () => {
+		assert.equal(deliveryStatus(201), 201);
+		assert.equal(deliveryStatus(200), 200);
+	});
+
+	it("maps push-service failures to 502, never to our own 401", () => {
+		for (const status of [400, 401, 403, 404, 410, 413, 429, 500, 503]) {
+			assert.equal(deliveryStatus(status), 502);
+		}
 	});
 });

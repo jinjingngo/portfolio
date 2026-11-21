@@ -98,6 +98,16 @@ export const decideSubscribe = (input: {
 	return reject("Not allowed to replace this subscription.", 403);
 };
 
+/**
+ * Status the send route returns for the push service's answer. Failures become
+ * 502 so a push-service 401/403 (e.g. a rejected VAPID signature) isn't read
+ * by the browser as its own token being rejected.
+ */
+export const deliveryStatus = (pushServiceStatus: number) =>
+	pushServiceStatus >= 200 && pushServiceStatus < 300
+		? pushServiceStatus
+		: 502;
+
 /** Start (epoch ms) of the fixed rate-limit window containing `nowMs`. */
 export const rateWindowStart = (nowMs: number) => {
 	const windowMs = PUSH_LIMITS.windowSeconds * 1000;
