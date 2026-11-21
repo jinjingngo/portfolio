@@ -50,15 +50,16 @@ own daily count, so they spend the shared allowance without counting toward prod
 
 ## Scripts
 
-| Command                       | What it does                                                    |
-| ----------------------------- | --------------------------------------------------------------- |
-| `pnpm dev`                    | Dev server                                                      |
-| `pnpm lint` / `pnpm lint:fix` | Biome lint and format check / fix                               |
-| `pnpm exec tsc --noEmit`      | Typecheck                                                       |
-| `pnpm test`                   | Unit tests (`node:test`, `tests/**/*.test.ts`)                  |
-| `pnpm build`                  | Next.js production build                                        |
-| `pnpm preview`                | OpenNext build, served locally in the Workers runtime           |
-| `pnpm cf:typegen`             | Regenerate `cloudflare-env.d.ts` after editing `wrangler.jsonc` |
+| Command                       | What it does                                                       |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `pnpm dev`                    | Dev server                                                         |
+| `pnpm lint` / `pnpm lint:fix` | Biome lint and format check / fix                                  |
+| `pnpm exec tsc --noEmit`      | Typecheck                                                          |
+| `pnpm test`                   | Unit tests (`node:test`, `tests/**/*.test.ts`)                     |
+| `pnpm build`                  | Next.js production build                                           |
+| `pnpm preview`                | OpenNext build, served locally in the Workers runtime              |
+| `pnpm upload:preview`         | Build and create/update this branch's Worker Preview on Cloudflare |
+| `pnpm cf:typegen`             | Regenerate `cloudflare-env.d.ts` after editing `wrangler.jsonc`    |
 
 ## Project layout
 
@@ -73,5 +74,5 @@ own daily count, so they spend the shared allowance without counting toward prod
 ## Deploys
 
 Cloudflare Workers Builds builds every push. Merging to `main` deploys production
-(`pnpm run deploy`); other branches upload a preview version (`pnpm run upload`). See
+(`pnpm run deploy`); other branches get a Worker Preview (`pnpm run upload:preview`). See
 [AGENTS.md](AGENTS.md) for details and for the working rules used in this repo.

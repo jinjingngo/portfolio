@@ -47,5 +47,27 @@
 			"binding": "PUSH_SUBSCRIPTIONS",
 			"id": "053d4fa52f49449cbc066b48435b5a6f"
 		}
-	]
+	],
+	// Worker Previews (PR builds run `pnpm run upload:preview`). Bindings aren't
+	// inherited, so each is declared here. KV points at a preview-only namespace
+	// so previews never touch real push subscribers; each Preview gets its own
+	// TranslateQuota storage; AI is the real account (shared daily allowance).
+	"previews": {
+		"ai": { "binding": "AI" },
+		"durable_objects": {
+			"bindings": [
+				{ "name": "TRANSLATE_QUOTA", "class_name": "TranslateQuota" }
+			]
+		},
+		"kv_namespaces": [
+			{
+				"binding": "PUSH_SUBSCRIPTIONS",
+				"id": "4c4213cf66e54bf2a67b361eb9c07a0f"
+			}
+		],
+		"services": [
+			{ "binding": "WORKER_SELF_REFERENCE", "service": "portfolio" }
+		],
+		"images": { "binding": "IMAGES" }
+	}
 }

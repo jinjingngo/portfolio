@@ -36,12 +36,18 @@ are local); the Cloudflare build on the PR is the check for the Worker bundle.
 Cloudflare Workers Builds runs on every push:
 
 - **`main`**: `pnpm run deploy` (build, then deploy). Merging to `main` puts it live.
-- **Other branches**: `pnpm run upload` (build, then upload a version). Each gets a preview
-  URL (`<version>-portfolio.jinjingwu.workers.dev`), behind Cloudflare Access.
+- **Other branches**: `pnpm run upload:preview` (build, then `wrangler preview`). Each branch
+  gets a Worker Preview at `<branch>-portfolio.jinjingwu.workers.dev`, behind Cloudflare Access.
+  Previews use the bindings in the `previews` block of `wrangler.jsonc`: a preview-only KV, their
+  own `TranslateQuota` storage, and the real Workers AI account.
 
 These commands are set in the Cloudflare dashboard (Workers → portfolio → Settings → Builds),
-not in the repo. On other branches a green "Workers Builds" check means the build and upload
+not in the repo. On other branches a green "Workers Builds" check means the build and preview
 worked, not that production changed; `pnpm exec wrangler deployments list` shows what is live.
+
+Because the Worker implements a Durable Object, Cloudflare no longer generates per-version
+URLs (`pnpm run upload` / `wrangler versions upload`), and a new Durable Object migration can
+only be applied by the `main` deploy. A new binding must be added to `previews` too.
 
 ## Danger zones
 
