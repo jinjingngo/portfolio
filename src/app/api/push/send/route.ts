@@ -34,7 +34,7 @@ export const POST = async (request: Request) => {
 	const [ok, error, body] = await t(request.json<PushBody>());
 
 	if (!ok || error) {
-		console.error("ERROR: parsing push payload", error);
+		console.error("[ERROR] Send body is not valid JSON");
 		return fail("Invalid push payload.", 400);
 	}
 
