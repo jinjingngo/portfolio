@@ -16,15 +16,17 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open <http://localhost:3000>. `pnpm dev:https` serves over HTTPS, which some browser APIs need
-on other devices.
+Open <http://localhost:3000>. `pnpm dev:https` serves localhost over HTTPS with a self-signed
+certificate trusted only on this machine; other devices must trust it before service workers
+and push work there.
 
 The dev server uses local Cloudflare bindings: push subscriptions live in a local KV under
 `.wrangler/state`, never in production.
 
 ### Web Push locally
 
-The push demo needs VAPID keys in `.dev.vars` (git-ignored, never commit it):
+The push demo needs VAPID keys in `.dev.vars` (git-ignored, never commit it). Generate a
+dev-only pair with `pnpm exec pushforge vapid`, then fill in:
 
 ```
 VAPID_PUBLIC_KEY="<base64url public key>"
@@ -51,7 +53,7 @@ Use a dev-only key pair, not the production keys. Production keys are Cloudflare
 - `src/app/page.tsx`: home page
 - `src/app/lab/<experiment>/`: experiments; `/lab` lists each folder automatically
 - `src/app/api/push/*`: Web Push API (public key, subscribe, unsubscribe, send)
-- `src/app/lib/`: shared code; pure decisions with tests, `lib/server/` for Cloudflare bindings
+- `src/app/lib/`: shared code (pure decisions are tested); `lib/server/` for Cloudflare bindings
 - `tests/`: unit tests
 - `public/`: static files, including the push service worker
 
