@@ -113,9 +113,6 @@ export default function CameraTranslatePage() {
 
 	const fail = (message: string) => {
 		stopCamera();
-		// An unconfirmed shared photo is dropped, so nothing (e.g. a language
-		// change) translates it without the Translate tap.
-		if (step === "shared") setPhoto(null);
 		setError(message);
 		setStep("error");
 	};
@@ -146,6 +143,9 @@ export default function CameraTranslatePage() {
 			video.srcObject = stream;
 			await video.play();
 		} catch {
+			// Leaving an unconfirmed shared photo: drop it, so nothing (e.g. a
+			// language change) translates it without the Translate tap.
+			if (step === "shared") setPhoto(null);
 			fail(
 				"Camera access was blocked. Allow it in your browser, or choose a photo instead.",
 			);
