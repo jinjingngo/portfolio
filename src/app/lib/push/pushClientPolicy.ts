@@ -14,6 +14,15 @@ export const classifySendStatus = (status: number): SendOutcome => {
 	return "failed";
 };
 
+/** The expired endpoint named in a 410 send response body, or null. */
+export const expiredEndpointOf = (body: unknown) => {
+	if (typeof body !== "object" || body === null) return null;
+	const { expiredEndpoint } = body as { expiredEndpoint?: unknown };
+	return typeof expiredEndpoint === "string" && expiredEndpoint
+		? expiredEndpoint
+		: null;
+};
+
 /**
  * Whether the subscription a 410 refers to is still this browser's current
  * one. Another tab may have re-subscribed while the send was in flight; that

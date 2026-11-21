@@ -1,6 +1,7 @@
 import { t } from "try";
 import {
 	classifySendStatus,
+	expiredEndpointOf,
 	isSameSubscription,
 	type PushEnvironment,
 	pushUnavailableReason,
@@ -211,7 +212,6 @@ export const sendPushNotification = async (
 ) => {
 	const token = await getSendToken(clientId);
 	if (!token) throw new Error("Enable notifications first.");
-	const sentWith = (await getPushSubscription())?.endpoint ?? null;
 
 	const response = await requestWithTokenRetry(
 		token,
@@ -233,8 +233,13 @@ export const sendPushNotification = async (
 	if (outcome === "throttled") {
 		throw new Error("Too many notifications. Try again in a minute.");
 	}
-	if (outcome === "expired" && (await forgetExpiredSubscription(sentWith))) {
-		throw new PushSubscriptionExpiredError();
+	if (outcome === "expired") {
+		// Compare with the endpoint the server pushed to, not a local snapshot:
+		// a newer subscription may exist here before the server has saved it.
+		const [, , body] = await t(response.json());
+		if (await forgetExpiredSubscription(expiredEndpointOf(body))) {
+			throw new PushSubscriptionExpiredError();
+		}
 	}
 	throw new Error("The test notification could not be sent.");
 };

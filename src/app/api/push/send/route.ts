@@ -121,10 +121,13 @@ export const POST = async (request: Request) => {
 		});
 	}
 
+	// A 410 names the endpoint that expired, so the caller (who proved
+	// ownership with its token) drops only that subscription, not a newer one.
+	const status = deliveryStatus(response.status);
 	return NextResponse.json(
-		{
-			ok: response.ok,
-		},
-		{ status: deliveryStatus(response.status) },
+		status === 410
+			? { ok: false, expiredEndpoint: pushRequest.endpoint }
+			: { ok: response.ok },
+		{ status },
 	);
 };

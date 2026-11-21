@@ -34,7 +34,7 @@ const fakeBrowser = (
 		};
 		return made;
 	};
-	const subscription = makeSubscription("https://push.example/abc");
+	const subscription = makeSubscription(OLD_ENDPOINT);
 	let current = subscription;
 	/** Another tab re-subscribed: the browser now has a different subscription. */
 	const replaceSubscription = () => {
@@ -80,6 +80,9 @@ const fakeBrowser = (
 	});
 	return { store, calls, subscription, replaceSubscription };
 };
+
+const OLD_ENDPOINT = "https://push.example/abc";
+const gone = () => json(410, { ok: false, expiredEndpoint: OLD_ENDPOINT });
 
 const json = (status: number, body: unknown = {}) =>
 	new Response(JSON.stringify(body), { status });
@@ -132,7 +135,7 @@ describe("sendPushNotification", () => {
 	});
 
 	it("drops an expired subscription locally and never re-saves it", async () => {
-		const browser = fakeBrowser({ "/api/push/send": [() => json(410)] });
+		const browser = fakeBrowser({ "/api/push/send": [gone] });
 		browser.store.set(TOKEN_KEY, "token");
 
 		await assert.rejects(
@@ -154,7 +157,7 @@ describe("sendPushNotification", () => {
 				() => {
 					replacement = browser.replaceSubscription();
 					browser.store.set(TOKEN_KEY, "token-of-new-subscription");
-					return json(410);
+					return gone();
 				},
 			],
 		});
@@ -168,8 +171,32 @@ describe("sendPushNotification", () => {
 		assert.equal(replacement?.unsubscribed, false);
 	});
 
-	it("keeps token and toggle when the browser can't drop the expired subscription", async () => {
+	it("keeps a newer local subscription the server hasn't saved yet", async () => {
+		const browser = fakeBrowser({ "/api/push/send": [gone] });
+		browser.store.set(TOKEN_KEY, "token");
+		const newer = browser.replaceSubscription();
+
+		await assert.rejects(
+			sendPushNotification(CLIENT_ID, NOTIFICATION),
+			/could not be sent/,
+		);
+		assert.equal(newer.unsubscribed, false);
+		assert.equal(browser.store.get(TOKEN_KEY), "token");
+	});
+
+	it("drops nothing when a 410 doesn't name the expired endpoint", async () => {
 		const browser = fakeBrowser({ "/api/push/send": [() => json(410)] });
+		browser.store.set(TOKEN_KEY, "token");
+
+		await assert.rejects(
+			sendPushNotification(CLIENT_ID, NOTIFICATION),
+			/could not be sent/,
+		);
+		assert.equal(browser.subscription.unsubscribed, false);
+	});
+
+	it("keeps token and toggle when the browser can't drop the expired subscription", async () => {
+		const browser = fakeBrowser({ "/api/push/send": [gone] });
 		browser.store.set(TOKEN_KEY, "token");
 		browser.subscription.failUnsubscribe = true;
 

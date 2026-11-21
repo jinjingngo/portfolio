@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	classifySendStatus,
+	expiredEndpointOf,
 	isSameSubscription,
 	type PushEnvironment,
 	pushUnavailableReason,
@@ -69,5 +70,27 @@ describe("isSameSubscription", () => {
 		assert.equal(isSameSubscription("https://p/a", "https://p/b"), false);
 		assert.equal(isSameSubscription(null, "https://p/a"), false);
 		assert.equal(isSameSubscription(null, null), false);
+	});
+});
+
+describe("expiredEndpointOf", () => {
+	it("reads the endpoint the server pushed to", () => {
+		assert.equal(
+			expiredEndpointOf({ ok: false, expiredEndpoint: "https://p/a" }),
+			"https://p/a",
+		);
+	});
+
+	it("is null for anything else", () => {
+		for (const body of [
+			null,
+			undefined,
+			"x",
+			{},
+			{ expiredEndpoint: "" },
+			{ expiredEndpoint: 1 },
+		]) {
+			assert.equal(expiredEndpointOf(body), null);
+		}
 	});
 });
