@@ -1,4 +1,5 @@
 import { t } from "try";
+import { SHARED_PHOTO_CACHE } from "./shareTarget";
 
 /**
  * Pure caching rules for the service worker: which strategy and cache each
@@ -47,6 +48,8 @@ export const cacheNames = (version: string) =>
 		pages: `${PAGES}${version}`,
 		static: `${PREFIX}-static`,
 		assets: `${PREFIX}-assets`,
+		/** A photo shared into Camera Translate, waiting for the page. */
+		share: SHARED_PHOTO_CACHE,
 	});
 
 /** Caches from older versions of this site's worker; others are left alone. */

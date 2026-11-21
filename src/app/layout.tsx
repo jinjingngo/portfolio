@@ -2,6 +2,7 @@ import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
+import { AppBadgeClearer } from "./components/appBadgeClearer";
 import { InstallPromptCatcher } from "./components/installPromptCatcher";
 import { Navbar } from "./components/navbar";
 import { OfflinePageSaver } from "./components/offlinePageSaver";
@@ -50,6 +51,7 @@ export default function RootLayout({
 				<Navbar />
 				<PwaUpdatePrompt />
 				<OfflinePageSaver />
+				<AppBadgeClearer />
 			</body>
 		</html>
 	);

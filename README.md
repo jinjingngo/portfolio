@@ -26,7 +26,9 @@ certificate ("CA Root certificate created in …").
 Production builds install a service worker (`src/sw/`): pages you've visited open offline,
 others show `/offline`, and a new deploy offers "A new version is available · Reload". Test it
 with `pnpm preview` in real Chrome or Safari. Browsers that can install the site show "Install
-app" in the navbar; iPhone and iPad show a one-time "Add to Home Screen" hint.
+app" in the navbar; iPhone and iPad show a one-time "Add to Home Screen" hint. Installed on
+Android, the app takes photos shared from the gallery into Camera Translate; a push also badges
+the app icon where supported.
 
 The dev server uses local Cloudflare bindings: push subscriptions live in a local KV under
 `.wrangler/state`, never in production.

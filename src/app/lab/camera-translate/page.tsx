@@ -5,6 +5,13 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useClientId } from "@/app/hooks/useClientId";
 import { useOnline } from "@/app/hooks/useOnline";
 import { useReadAloud } from "@/app/hooks/useReadAloud";
+import { useShareText } from "@/app/hooks/useShareText";
+import { takeSharedPhoto } from "@/app/lib/pwa/sharedPhoto";
+import {
+	SHARE_MESSAGES,
+	SHARE_PAGE_PATH,
+	shareOutcomeOf,
+} from "@/app/lib/pwa/shareTarget";
 import {
 	loadImageFile,
 	readLastTarget,
@@ -12,6 +19,7 @@ import {
 	toJpegDataUri,
 	writeLastTarget,
 } from "@/app/lib/translate/cameraTranslate";
+import { translationShareText } from "@/app/lib/translate/shareTranslation";
 import { playAllOrder } from "@/app/lib/translate/speechPolicy";
 import {
 	defaultTargetLanguage,
@@ -62,6 +70,9 @@ export default function CameraTranslatePage() {
 	const openingRef = useRef(false);
 	/** Id of the latest translation request; older answers are ignored. */
 	const requestRef = useRef(0);
+	/** A shared photo (`?shared=`) has been handled. */
+	const sharedRef = useRef(false);
+	const shareText = useShareText();
 
 	const [step, setStep] = useState<Step>("idle");
 	const [error, setError] = useState("");
@@ -179,10 +190,15 @@ export default function CameraTranslatePage() {
 		translate(image);
 	};
 
-	const pickFile = async (event: ChangeEvent<HTMLInputElement>) => {
+	const pickFile = (event: ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		event.target.value = "";
 		if (!file) return;
+		openPhoto(file);
+	};
+
+	/** Scales a picked or shared photo down and translates it. */
+	const openPhoto = async (file: Blob) => {
 		// Busy while the new photo loads: the language picker is disabled and any
 		// translation still in flight for the previous photo is ignored.
 		requestRef.current++;
@@ -200,6 +216,24 @@ export default function CameraTranslatePage() {
 			);
 		}
 	};
+
+	// A photo shared into the app (the manifest's share_target) opens once,
+	// after the client id and target language have loaded.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs once per share, when the client id is ready
+	useEffect(() => {
+		if (!clientId || sharedRef.current) return;
+		const outcome = shareOutcomeOf(window.location.search);
+		if (!outcome) return;
+		sharedRef.current = true;
+		window.history.replaceState(null, "", SHARE_PAGE_PATH);
+		if (outcome !== "ready") {
+			fail(SHARE_MESSAGES[outcome]);
+			return;
+		}
+		takeSharedPhoto().then((shared) =>
+			shared ? openPhoto(shared) : fail(SHARE_MESSAGES.unavailable),
+		);
+	}, [clientId]);
 
 	const chooseTarget = (code: string) => {
 		if (!isTargetLanguage(code)) return;
@@ -440,6 +474,39 @@ export default function CameraTranslatePage() {
 											</li>
 										))}
 									</ul>
+									{shareText.method && (
+										<div className="flex flex-wrap items-center gap-3">
+											<button
+												type="button"
+												onClick={() =>
+													shareText.share(
+														translationShareText(
+															result.blocks,
+															{
+																source: nameOf(
+																	result.sourceLanguage,
+																),
+																target: nameOf(
+																	result.target,
+																),
+															},
+														),
+													)
+												}
+												className={secondary}
+											>
+												{shareText.method === "share"
+													? "Share translation"
+													: "Copy translation"}
+											</button>
+											<span
+												aria-live="polite"
+												className="text-sm text-gray-600"
+											>
+												{shareText.note}
+											</span>
+										</div>
+									)}
 								</>
 							)}
 						</div>

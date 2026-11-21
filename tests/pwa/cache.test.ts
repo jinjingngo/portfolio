@@ -94,6 +94,7 @@ describe("cacheNames and obsoleteCaches", () => {
 			pages: "jj-pages-abc",
 			static: "jj-static",
 			assets: "jj-assets",
+			share: "jj-share",
 		});
 	});
 
@@ -105,6 +106,8 @@ describe("cacheNames and obsoleteCaches", () => {
 			"jj-pages-new",
 			"jj-static",
 			"jj-assets",
+			// A photo shared just before an update must survive it.
+			"jj-share",
 			"someone-elses-cache",
 		];
 		assert.deepEqual(obsoleteCaches(existing, "new"), [
