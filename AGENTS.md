@@ -24,10 +24,11 @@ Package manager is pnpm (lockfile v9). If `pnpm` is not installed:
 | --- | --- |
 | Lint + format check | `npx biome check` (fix: `npm run lint:fix`) |
 | Typecheck | `npx tsc --noEmit` |
+| Tests | `npm test` (node:test over `tests/**/*.test.ts`) |
 | Dev server | `npm run dev` |
 | Regenerate binding types | `npm run cf:typegen` (after editing `wrangler.jsonc`) |
 
-Run lint and typecheck before every commit. `next build` needs Cloudflare credentials
+Run lint, typecheck and tests before every commit. `next build` needs Cloudflare credentials
 (wrangler remote proxy), so it usually fails locally; verify builds on the Cloudflare
 preview URL of the PR instead.
 
