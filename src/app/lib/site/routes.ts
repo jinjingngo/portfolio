@@ -61,14 +61,25 @@ export const experimentTitle = (slug: string) =>
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(" ");
 
+type Exclusions = Readonly<Record<string, string>>;
+
+const isListed = (path: string, excluded: Exclusions) =>
+	!Object.hasOwn(excluded, path);
+
+/** The experiments the /lab index links to: all but the excluded ones. */
+export const listedExperiments = (
+	experiments: readonly string[],
+	excluded: Exclusions = EXCLUDED_PAGES,
+) => experiments.filter((slug) => isListed(`/lab/${slug}`, excluded));
+
 /** Every public page path, fixed pages first, minus the exclusions. */
 export const publicPaths = (
 	experiments: readonly string[],
-	excluded: Readonly<Record<string, string>> = EXCLUDED_PAGES,
-) =>
-	[...FIXED_PAGES, ...experiments.map((slug) => `/lab/${slug}`)].filter(
-		(path) => !Object.hasOwn(excluded, path),
-	);
+	excluded: Exclusions = EXCLUDED_PAGES,
+) => [
+	...FIXED_PAGES.filter((path) => isListed(path, excluded)),
+	...listedExperiments(experiments, excluded).map((slug) => `/lab/${slug}`),
+];
 
 /**
  * sitemap.xml entries. No `lastModified`: the build time would claim every

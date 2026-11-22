@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { readLabFolders } from "@/app/lib/server/labFolders";
-import { experimentTitle, labExperiments } from "@/app/lib/site/routes";
+import {
+	experimentTitle,
+	labExperiments,
+	listedExperiments,
+} from "@/app/lib/site/routes";
 
 /** Lists every experiment folder (read at build time; see lib/site/routes). */
 export default function LabPage() {
-	const experiments = labExperiments(readLabFolders());
+	const experiments = listedExperiments(labExperiments(readLabFolders()));
 	return (
 		<div className="flex flex-col items-start gap-4">
 			<h1 className={"text-4xl md:text-5xl text-gray-900"}>/lab</h1>

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
 	experimentTitle,
 	labExperiments,
+	listedExperiments,
 	publicPaths,
 	SITE_ORIGIN,
 	sitemapEntries,
@@ -73,6 +74,17 @@ describe("publicPaths", () => {
 			"/lab/camera-translate",
 			"/lab/web-push",
 		]);
+	});
+});
+
+describe("listedExperiments", () => {
+	it("leaves excluded experiments out of the /lab index", () => {
+		assert.deepEqual(
+			listedExperiments(["draft-idea", "web-push"], {
+				"/lab/draft-idea": "Not ready yet.",
+			}),
+			["web-push"],
+		);
 	});
 });
 
