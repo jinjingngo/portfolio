@@ -43,6 +43,8 @@ export const LoadReport = () => {
 	const [report, setReport] = useState<Report | null>(null);
 	// True only while hydrating the server HTML, i.e. when this page came with
 	// a newly loaded document; false for any client-side render (Link, Back).
+	// Limits: a hydration error re-renders on the client (reads client-side),
+	// and with cacheComponents a revisited page keeps this state.
 	const hydrating = useSyncExternalStore(
 		noSubscription,
 		() => false,
@@ -61,6 +63,17 @@ export const LoadReport = () => {
 		document.addEventListener("prerenderingchange", read, { once: true });
 		return () => document.removeEventListener("prerenderingchange", read);
 	}, [loadedWithDocument]);
+
+	// Back from another site can restore this page from the bfcache as it was,
+	// without running React again: say so instead of showing the old report.
+	useEffect(() => {
+		const onShow = (event: PageTransitionEvent) => {
+			if (!event.persisted) return;
+			setReport((current) => current && { ...current, kind: "history" });
+		};
+		window.addEventListener("pageshow", onShow);
+		return () => window.removeEventListener("pageshow", onShow);
+	}, []);
 
 	if (!report) return null;
 	return (

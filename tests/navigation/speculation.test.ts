@@ -46,7 +46,7 @@ describe("loadKind", () => {
 		assert.equal(loadKind({ ...base, type: "reload" }), "full-load");
 	});
 
-	it("is client-side when the document was loaded for another URL", () => {
+	it("is client-side when the page wasn't hydrated from its document", () => {
 		assert.equal(
 			loadKind({
 				...base,
