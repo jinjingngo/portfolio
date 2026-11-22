@@ -1,14 +1,8 @@
 import type { MetadataRoute } from "next";
+import { readLabFolders } from "./lib/server/labFolders";
+import { labExperiments, publicPaths, sitemapEntries } from "./lib/site/routes";
 
-export const SITE_DOMAIN = "https://wujinjing.com";
-
+/** Built once at build time from the same page list as /lab (see lib/site/routes). */
 export default function sitemap(): MetadataRoute.Sitemap {
-	return [
-		{
-			url: SITE_DOMAIN,
-			lastModified: new Date(),
-			changeFrequency: "weekly",
-			priority: 1,
-		},
-	];
+	return sitemapEntries(publicPaths(labExperiments(readLabFolders())));
 }

@@ -71,7 +71,8 @@ own daily count, so they spend the shared allowance without counting toward prod
 ## Project layout
 
 - `src/app/page.tsx`: home page
-- `src/app/lab/<experiment>/`: experiments; `/lab` lists each folder automatically
+- `src/app/lab/<experiment>/`: experiments; `/lab` and `sitemap.xml` list each folder with a
+  `page.tsx` automatically (page list: `src/app/lib/site/routes.ts`, explained at `/lab/sitemap`)
 - `src/app/api/push/*`: Web Push API (public key, subscribe, unsubscribe, send)
 - `src/app/api/translate/image`: camera translate API (Workers AI)
 - `src/app/lib/`: shared code (pure decisions are tested); `lib/server/` for Cloudflare bindings

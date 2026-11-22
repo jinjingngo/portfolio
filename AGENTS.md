@@ -8,8 +8,11 @@ Personal portfolio site: Next.js 16 (App Router, React 19, Tailwind 4), built wi
 OpenNext and served as a Cloudflare Worker (`wrangler.jsonc`).
 
 - `src/app/page.tsx`: home page.
-- `src/app/lab/<experiment>/`: experiments. `/lab` lists each subfolder automatically,
-  so a new experiment is just a new folder with a `page.tsx`.
+- `src/app/lab/<experiment>/`: experiments. `/lab` and `sitemap.xml` list each subfolder
+  with a `page.tsx` automatically, so a new experiment is just a new folder with a page.
+  The page list lives in `src/app/lib/site/routes.ts` (tested): fixed pages, explicit
+  exclusions (e.g. `/offline`), and the sitemap entries. `/lab/sitemap` explains it on the site.
+  The folders are read at build time; the deployed Worker has no file system.
 - `src/app/api/push/*`: Web Push API (subscribe, unsubscribe, public key, send).
 - `src/app/lib/`: shared code; `lib/server/` is server-only (Cloudflare bindings).
 - `src/app/components/`, `src/app/hooks/`: UI pieces and client hooks.
