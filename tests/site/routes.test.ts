@@ -52,6 +52,17 @@ describe("publicPaths", () => {
 	});
 });
 
+describe("publicPaths exclusions", () => {
+	it("leaves out excluded pages, including a lab experiment", () => {
+		assert.deepEqual(
+			publicPaths(["draft-idea", "web-push"], {
+				"/lab/draft-idea": "Not ready yet.",
+			}),
+			["/", "/lab", "/lab/web-push"],
+		);
+	});
+});
+
 describe("sitemapEntries", () => {
 	it("builds absolute URLs on the site's origin, without dates", () => {
 		const entries = sitemapEntries(["/", "/lab", "/lab/web-push"]);

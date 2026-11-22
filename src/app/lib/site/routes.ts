@@ -45,9 +45,12 @@ export const experimentTitle = (slug: string) =>
 		.join(" ");
 
 /** Every public page path, fixed pages first, minus the exclusions. */
-export const publicPaths = (experiments: readonly string[]) =>
+export const publicPaths = (
+	experiments: readonly string[],
+	excluded: Readonly<Record<string, string>> = EXCLUDED_PAGES,
+) =>
 	[...FIXED_PAGES, ...experiments.map((slug) => `/lab/${slug}`)].filter(
-		(path) => !(path in EXCLUDED_PAGES),
+		(path) => !Object.hasOwn(excluded, path),
 	);
 
 /**
