@@ -1,5 +1,6 @@
 import type { Metadata, MetadataRoute } from "next";
-import Link from "next/link";
+import { NavLink } from "@/app/components/navLink";
+import { PageTransition } from "@/app/components/pageTransition";
 import { readLabFolders } from "@/app/lib/server/labFolders";
 import {
 	EXCLUDED_PAGES,
@@ -27,23 +28,25 @@ export default function SitemapPage() {
 		publicPaths(labExperiments(readLabFolders())),
 	);
 	return (
-		<div className="flex min-w-0 flex-1 flex-col gap-8">
-			<Intro />
-			<EntriesTable entries={entries} />
-			<HowItWorks />
-			<LeftOut />
-		</div>
+		<PageTransition>
+			<div className="flex min-w-0 flex-1 flex-col gap-8">
+				<Intro />
+				<EntriesTable entries={entries} />
+				<HowItWorks />
+				<LeftOut />
+			</div>
+		</PageTransition>
 	);
 }
 
 const Intro = () => (
 	<div>
-		<Link
+		<NavLink
 			className="text-sm underline decoration-wavy underline-offset-4"
 			href="/lab"
 		>
 			← /lab
-		</Link>
+		</NavLink>
 		<h1 className="mt-5 text-4xl text-gray-900 md:text-5xl">Sitemap</h1>
 		<p className="mt-3 max-w-2xl text-gray-600">
 			This site&apos;s{" "}
@@ -112,9 +115,9 @@ const HowItWorks = () => (
 			</li>
 			<li>
 				The same list feeds this sitemap and the{" "}
-				<Link className={linkClass} href="/lab">
+				<NavLink className={linkClass} href="/lab">
 					/lab
-				</Link>{" "}
+				</NavLink>{" "}
 				index, so the two can&apos;t disagree. Both are generated once
 				per build: the deployed Worker has no file system to read.
 			</li>

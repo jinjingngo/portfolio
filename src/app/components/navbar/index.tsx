@@ -1,7 +1,7 @@
 "use client";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AddToHomeScreenHint } from "@/app/components/addToHomeScreenHint";
+import { NavLink } from "@/app/components/navLink";
 import { useInstallPrompt } from "@/app/hooks/useInstallPrompt";
 import { cn } from "@/app/lib/cn";
 
@@ -11,10 +11,14 @@ export const Navbar = () => {
 	const { hint, install, dismissHint } = useInstallPrompt();
 
 	return (
-		<nav className="shrink-0 ps-[max(0.5rem,env(safe-area-inset-left))] pe-[max(0.5rem,env(safe-area-inset-right))] pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+		<nav
+			// Named so the navbar stays put while page content slides (globals.css).
+			style={{ viewTransitionName: "site-nav" }}
+			className="shrink-0 ps-[max(0.5rem,env(safe-area-inset-left))] pe-[max(0.5rem,env(safe-area-inset-right))] pb-[max(0.25rem,env(safe-area-inset-bottom))]"
+		>
 			<ul className="flex items-center justify-end gap-4">
 				<li>
-					<Link
+					<NavLink
 						className={cn(
 							"cursor-pointer underline-offset-2 decoration-wavy hover:decoration-solid hover:underline-offset-2",
 							isSelf("/") && "underline",
@@ -22,10 +26,10 @@ export const Navbar = () => {
 						href={"/"}
 					>
 						~
-					</Link>
+					</NavLink>
 				</li>
 				<li>
-					<Link
+					<NavLink
 						className={cn(
 							"cursor-pointer underline-offset-2 decoration-wavy hover:decoration-solid hover:underline-offset-2",
 							isSelf("/lab") && "underline",
@@ -33,7 +37,7 @@ export const Navbar = () => {
 						href={"/lab"}
 					>
 						/lab
-					</Link>
+					</NavLink>
 				</li>
 				{hint === "prompt" && (
 					<li>

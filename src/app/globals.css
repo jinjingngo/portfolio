@@ -1,2 +1,75 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
+
+/*
+ * View transitions between pages (see /lab/view-transitions). NavLink tags a
+ * navigation nav-forward or nav-back; PageTransition slides the page content.
+ */
+::view-transition-old(.nav-forward) {
+	--slide-offset: -60px;
+	animation:
+		150ms ease-in both page-fade reverse,
+		400ms ease-in-out both page-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+	--slide-offset: 60px;
+	animation:
+		210ms ease-out 150ms both page-fade,
+		400ms ease-in-out both page-slide;
+}
+::view-transition-old(.nav-back) {
+	--slide-offset: 60px;
+	animation:
+		150ms ease-in both page-fade reverse,
+		400ms ease-in-out both page-slide reverse;
+}
+::view-transition-new(.nav-back) {
+	--slide-offset: -60px;
+	animation:
+		210ms ease-out 150ms both page-fade,
+		400ms ease-in-out both page-slide;
+}
+@keyframes page-fade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+@keyframes page-slide {
+	from {
+		translate: var(--slide-offset);
+	}
+	to {
+		translate: 0;
+	}
+}
+
+/* The navbar stays put while the content moves. */
+::view-transition-group(site-nav) {
+	animation: none;
+	z-index: 100;
+}
+::view-transition-old(site-nav) {
+	display: none;
+}
+::view-transition-new(site-nav) {
+	animation: none;
+}
+
+/* Clicks reach the page while a transition runs. */
+::view-transition {
+	pointer-events: none;
+}
+
+/* Reduced motion: the page swaps at once (same selectors, so these win). */
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-old(.nav-forward),
+	::view-transition-new(.nav-forward),
+	::view-transition-old(.nav-back),
+	::view-transition-new(.nav-back),
+	::view-transition-group(*) {
+		animation: none;
+	}
+}

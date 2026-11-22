@@ -16,6 +16,10 @@ OpenNext and served as a Cloudflare Worker (`wrangler.jsonc`).
 - `src/app/api/push/*`: Web Push API (subscribe, unsubscribe, public key, send).
 - `src/app/lib/`: shared code; `lib/server/` is server-only (Cloudflare bindings).
 - `src/app/components/`, `src/app/hooks/`: UI pieces and client hooks.
+- **Page transitions** (`/lab/view-transitions` explains them): links inside the site use
+  `NavLink`, which tags each navigation forward or back (`navDirection`, tested); each page wraps
+  its content in `PageTransition`, as does a layout that navigation can add or remove
+  (`lab/layout.tsx`). The slides and the reduced-motion rules are in `globals.css`.
 - Import alias: `@/*` → `src/*`.
 
 ## Commands
