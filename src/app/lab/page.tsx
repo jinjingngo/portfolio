@@ -1,21 +1,14 @@
-import fs from "node:fs";
 import Link from "next/link";
+import { readLabFolders } from "@/app/lib/server/labFolders";
+import {
+	experimentTitle,
+	labExperiments,
+	listedExperiments,
+} from "@/app/lib/site/routes";
 
-const snakeToUpperCamel = (str: string) => {
-	return str
-		.split("-")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
-};
-
-const path = "./src/app/lab";
-
-const folders = fs.readdirSync(path);
-const experiments = folders.filter((folder) =>
-	fs.statSync(`${path}/${folder}`).isDirectory(),
-);
-
-export default function TheTwoReacts() {
+/** Lists every experiment folder (read at build time; see lib/site/routes). */
+export default function LabPage() {
+	const experiments = listedExperiments(labExperiments(readLabFolders()));
 	return (
 		<div className="flex flex-col items-start gap-4">
 			<h1 className={"text-4xl md:text-5xl text-gray-900"}>/lab</h1>
@@ -30,9 +23,9 @@ export default function TheTwoReacts() {
 							className={
 								"cursor-pointer underline underline-offset-2 decoration-wavy hover:decoration-solid hover:underline-offset-4"
 							}
-							href={`/lab/${experiment}`}
+							href={`/lab/${encodeURIComponent(experiment)}`}
 						>
-							{snakeToUpperCamel(experiment)}
+							{experimentTitle(experiment)}
 						</Link>
 					</li>
 				))}
