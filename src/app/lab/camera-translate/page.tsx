@@ -600,6 +600,7 @@ export default function CameraTranslatePage() {
 									onClick={() => fileRef.current?.click()}
 									disabled={
 										step === "translating" ||
+										opening ||
 										!clientId ||
 										!online
 									}
