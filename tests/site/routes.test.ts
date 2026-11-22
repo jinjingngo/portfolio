@@ -34,6 +34,30 @@ describe("labExperiments", () => {
 	});
 });
 
+describe("labExperiments slugs", () => {
+	it("fails the build for a routable folder that isn't a slug", () => {
+		for (const name of [
+			"My Thing",
+			"Camera-Translate",
+			"a<b",
+			"trailing-",
+		]) {
+			assert.throws(
+				() => labExperiments([{ name, hasPage: true }]),
+				/lowercase slugs/,
+				name,
+			);
+		}
+	});
+
+	it("ignores odd names on folders without a page", () => {
+		assert.deepEqual(
+			labExperiments([{ name: "My Notes", hasPage: false }]),
+			[],
+		);
+	});
+});
+
 describe("experimentTitle", () => {
 	it("turns a folder name into a title", () => {
 		assert.equal(experimentTitle("camera-translate"), "Camera Translate");

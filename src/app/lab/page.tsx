@@ -19,7 +19,7 @@ export default function LabPage() {
 							className={
 								"cursor-pointer underline underline-offset-2 decoration-wavy hover:decoration-solid hover:underline-offset-4"
 							}
-							href={`/lab/${experiment}`}
+							href={`/lab/${encodeURIComponent(experiment)}`}
 						>
 							{experimentTitle(experiment)}
 						</Link>

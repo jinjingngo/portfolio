@@ -31,14 +31,28 @@ export type LabFolder = { name: string; hasPage: boolean };
  */
 const NOT_A_PAGE_NAME = /^[_(@[]/;
 
-/** The experiments: lab folders with their own page, sorted by name. */
-export const labExperiments = (folders: readonly LabFolder[]) =>
-	folders
+/** What an experiment's folder (and URL) name must look like: "camera-translate". */
+const EXPERIMENT_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * The experiments: lab folders with their own page, sorted by name. A
+ * routable folder whose name isn't a slug fails the build, rather than being
+ * left out quietly or put into links and the sitemap as is.
+ */
+export const labExperiments = (folders: readonly LabFolder[]) => {
+	const names = folders
 		.filter(
 			(folder) => folder.hasPage && !NOT_A_PAGE_NAME.test(folder.name),
 		)
-		.map((folder) => folder.name)
-		.sort();
+		.map((folder) => folder.name);
+	const invalid = names.filter((name) => !EXPERIMENT_SLUG.test(name));
+	if (invalid.length > 0) {
+		throw new Error(
+			`Lab folder names must be lowercase slugs (a-z, 0-9, "-"): ${invalid.join(", ")}`,
+		);
+	}
+	return names.sort();
+};
 
 /** "camera-translate" → "Camera Translate". */
 export const experimentTitle = (slug: string) =>
