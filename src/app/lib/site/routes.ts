@@ -13,7 +13,10 @@ export const FIXED_PAGES = Object.freeze(["/", "/lab"]);
 
 /**
  * Pages that exist but are never listed, with why. Everything else under
- * src/app/lab/<folder>/page.tsx is listed automatically.
+ * src/app/lab/<folder>/page.tsx is listed automatically. `/offline` is outside
+ * /lab, so it is never a candidate; it is here so the list of unlisted pages
+ * is complete (and shown on /lab/sitemap). A lab experiment added here is
+ * left out of /lab and the sitemap.
  */
 export const EXCLUDED_PAGES: Readonly<Record<string, string>> = Object.freeze({
 	"/offline": "Shown by the service worker when offline; marked noindex.",
