@@ -20,6 +20,9 @@ OpenNext and served as a Cloudflare Worker (`wrangler.jsonc`).
   `NavLink`, which tags each navigation forward or back (`navDirection`, tested); each page wraps
   its content in `PageTransition`, as does a layout that navigation can add or remove
   (`lab/layout.tsx`). The slides and the reduced-motion rules are in `globals.css`.
+- **Speculation rules** live only on `/lab/speculation-rules` (which explains why). Don't add them
+  site-wide: every in-site link is a Next `<Link>`, which already prefetches and never uses a
+  prerendered document, so site-wide rules would fetch and render pages twice.
 - Import alias: `@/*` → `src/*`.
 
 ## Commands
