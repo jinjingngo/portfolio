@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "try";
+import { NavLink } from "@/app/components/navLink";
+import { PageTransition } from "@/app/components/pageTransition";
 import { useClientId } from "@/app/hooks/useClientId";
 import { useOnline } from "@/app/hooks/useOnline";
 import { useReadAloud } from "@/app/hooks/useReadAloud";
@@ -302,352 +303,374 @@ export default function CameraTranslatePage() {
 	};
 
 	return (
-		<div className="flex min-w-0 flex-1 flex-col gap-8">
-			<div>
-				<Link
-					className="text-sm underline decoration-wavy underline-offset-4"
-					href="/lab"
-				>
-					← /lab
-				</Link>
-				<h1 className="mt-5 text-4xl text-gray-900 md:text-5xl">
-					Camera Translate
-				</h1>
-				<p className="mt-3 max-w-2xl text-gray-600">
-					Point your camera at a sign, a menu or a label, take a
-					photo, and read it in your language.
-				</p>
-			</div>
-
-			<section className="w-full min-w-0 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
-				<div className="flex flex-col gap-5">
-					{!online && (
-						<p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-							You&apos;re offline. Translating needs a connection;
-							reading a result aloud still works.
-						</p>
-					)}
-					<label className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
-						Translate into
-						<select
-							value={target}
-							onChange={(event) =>
-								chooseTarget(event.target.value)
-							}
-							disabled={step === "translating" || opening}
-							className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
-						>
-							{TARGET_LANGUAGES.map((code) => (
-								<option key={code} value={code}>
-									{nameOf(code)}
-								</option>
-							))}
-						</select>
-					</label>
-
-					<div className="relative overflow-hidden rounded-xl bg-gray-900">
-						<video
-							ref={videoRef}
-							playsInline
-							muted
-							className={
-								step === "camera" ? "block w-full" : "hidden"
-							}
-						/>
-						{photo && step !== "camera" && (
-							// biome-ignore lint/performance/noImgElement: a local data URI, not an optimisable asset
-							<img
-								src={photo}
-								alt="What you captured, with its translation below"
-								className="block w-full"
-							/>
-						)}
-						{step === "translating" && (
-							<div className="absolute inset-0 flex items-center justify-center bg-black/40 text-sm font-medium text-white">
-								Reading and translating…
-							</div>
-						)}
-						{!photo && step !== "camera" && (
-							<div className="flex aspect-[4/3] items-center justify-center p-6 text-center text-sm text-gray-300">
-								Your photo will appear here.
-							</div>
-						)}
-					</div>
-
-					<p aria-live="polite" className="sr-only">
-						{step === "translating"
-							? "Reading and translating."
-							: step === "shared"
-								? "Shared photo ready. Tap Translate to read it."
-								: step === "result" && result
-									? `Detected ${nameOf(result.sourceLanguage)}, ${result.blocks.length} lines translated into ${nameOf(result.target)}.`
-									: ""}
+		<PageTransition>
+			<div className="flex min-w-0 flex-1 flex-col gap-8">
+				<div>
+					<NavLink
+						className="text-sm underline decoration-wavy underline-offset-4"
+						href="/lab"
+					>
+						← /lab
+					</NavLink>
+					<h1 className="mt-5 text-4xl text-gray-900 md:text-5xl">
+						Camera Translate
+					</h1>
+					<p className="mt-3 max-w-2xl text-gray-600">
+						Point your camera at a sign, a menu or a label, take a
+						photo, and read it in your language.
 					</p>
-					{step === "result" && result && (
-						<div className="flex flex-col gap-3">
-							{result.blocks.length === 0 ? (
-								<p className="text-sm text-gray-600">
-									No text found. Try again closer, with more
-									light.
-								</p>
-							) : (
-								<>
+				</div>
+
+				<section className="w-full min-w-0 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
+					<div className="flex flex-col gap-5">
+						{!online && (
+							<p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+								You&apos;re offline. Translating needs a
+								connection; reading a result aloud still works.
+							</p>
+						)}
+						<label className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
+							Translate into
+							<select
+								value={target}
+								onChange={(event) =>
+									chooseTarget(event.target.value)
+								}
+								disabled={step === "translating" || opening}
+								className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
+							>
+								{TARGET_LANGUAGES.map((code) => (
+									<option key={code} value={code}>
+										{nameOf(code)}
+									</option>
+								))}
+							</select>
+						</label>
+
+						<div className="relative overflow-hidden rounded-xl bg-gray-900">
+							<video
+								ref={videoRef}
+								playsInline
+								muted
+								className={
+									step === "camera"
+										? "block w-full"
+										: "hidden"
+								}
+							/>
+							{photo && step !== "camera" && (
+								// biome-ignore lint/performance/noImgElement: a local data URI, not an optimisable asset
+								<img
+									src={photo}
+									alt="What you captured, with its translation below"
+									className="block w-full"
+								/>
+							)}
+							{step === "translating" && (
+								<div className="absolute inset-0 flex items-center justify-center bg-black/40 text-sm font-medium text-white">
+									Reading and translating…
+								</div>
+							)}
+							{!photo && step !== "camera" && (
+								<div className="flex aspect-[4/3] items-center justify-center p-6 text-center text-sm text-gray-300">
+									Your photo will appear here.
+								</div>
+							)}
+						</div>
+
+						<p aria-live="polite" className="sr-only">
+							{step === "translating"
+								? "Reading and translating."
+								: step === "shared"
+									? "Shared photo ready. Tap Translate to read it."
+									: step === "result" && result
+										? `Detected ${nameOf(result.sourceLanguage)}, ${result.blocks.length} lines translated into ${nameOf(result.target)}.`
+										: ""}
+						</p>
+						{step === "result" && result && (
+							<div className="flex flex-col gap-3">
+								{result.blocks.length === 0 ? (
 									<p className="text-sm text-gray-600">
-										Detected {nameOf(result.sourceLanguage)}{" "}
-										→ {nameOf(result.target)}. Tap a line to
-										see the original.
+										No text found. Try again closer, with
+										more light.
 									</p>
-									{readAloud.supported &&
-										readAloud.voicesLoaded &&
-										!readAloud.voice && (
-											<p className="text-sm text-gray-500">
-												No voice for{" "}
-												{nameOf(result.sourceLanguage)}{" "}
-												on this device, so it can't be
-												read aloud.
-											</p>
-										)}
-									{readAloud.voice && (
-										<div className="flex flex-wrap items-center gap-3">
-											{readAloud.playing === null ? (
-												<button
-													type="button"
-													onClick={() =>
-														readAloud.play(
-															playAllOrder(
-																result.blocks,
-															).map((index) => ({
-																index,
-																text: result
-																	.blocks[
-																	index
-																].text,
-															})),
-														)
-													}
-													className={secondary}
-												>
-													▶ Play all
-												</button>
-											) : (
-												<button
-													type="button"
-													onClick={readAloud.stop}
-													className={secondary}
-												>
-													■ Stop
-												</button>
+								) : (
+									<>
+										<p className="text-sm text-gray-600">
+											Detected{" "}
+											{nameOf(result.sourceLanguage)} →{" "}
+											{nameOf(result.target)}. Tap a line
+											to see the original.
+										</p>
+										{readAloud.supported &&
+											readAloud.voicesLoaded &&
+											!readAloud.voice && (
+												<p className="text-sm text-gray-500">
+													No voice for{" "}
+													{nameOf(
+														result.sourceLanguage,
+													)}{" "}
+													on this device, so it can't
+													be read aloud.
+												</p>
 											)}
-											<label className="flex items-center gap-2 text-sm text-gray-700">
-												<input
-													type="checkbox"
-													checked={readAloud.slow}
-													onChange={(event) =>
-														readAloud.setSlow(
-															event.target
-																.checked,
-														)
-													}
-													className="h-4 w-4"
-												/>
-												Slow
-											</label>
-										</div>
-									)}
-									<ul className="flex flex-col divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
-										{result.blocks.map((block, index) => (
-											<li
-												// biome-ignore lint/suspicious/noArrayIndexKey: one fixed list per result, never reordered
-												key={index}
-												className={`flex items-stretch ${readAloud.playing === index ? "bg-amber-50" : ""}`}
-											>
-												{readAloud.voice && (
+										{readAloud.voice && (
+											<div className="flex flex-wrap items-center gap-3">
+												{readAloud.playing === null ? (
 													<button
 														type="button"
 														onClick={() =>
-															readAloud.playing ===
-															index
-																? readAloud.stop()
-																: readAloud.play(
-																		[
-																			{
-																				index,
-																				text: block.text,
-																			},
-																		],
-																	)
+															readAloud.play(
+																playAllOrder(
+																	result.blocks,
+																).map(
+																	(
+																		index,
+																	) => ({
+																		index,
+																		text: result
+																			.blocks[
+																			index
+																		].text,
+																	}),
+																),
+															)
 														}
-														aria-label={
-															readAloud.playing ===
-															index
-																? "Stop reading"
-																: `Read aloud: ${block.text}`
-														}
-														className="flex w-12 shrink-0 items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+														className={secondary}
 													>
-														{readAloud.playing ===
-														index
-															? "■"
-															: "▶"}
+														▶ Play all
+													</button>
+												) : (
+													<button
+														type="button"
+														onClick={readAloud.stop}
+														className={secondary}
+													>
+														■ Stop
 													</button>
 												)}
+												<label className="flex items-center gap-2 text-sm text-gray-700">
+													<input
+														type="checkbox"
+														checked={readAloud.slow}
+														onChange={(event) =>
+															readAloud.setSlow(
+																event.target
+																	.checked,
+															)
+														}
+														className="h-4 w-4"
+													/>
+													Slow
+												</label>
+											</div>
+										)}
+										<ul className="flex flex-col divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
+											{result.blocks.map(
+												(block, index) => (
+													<li
+														// biome-ignore lint/suspicious/noArrayIndexKey: one fixed list per result, never reordered
+														key={index}
+														className={`flex items-stretch ${readAloud.playing === index ? "bg-amber-50" : ""}`}
+													>
+														{readAloud.voice && (
+															<button
+																type="button"
+																onClick={() =>
+																	readAloud.playing ===
+																	index
+																		? readAloud.stop()
+																		: readAloud.play(
+																				[
+																					{
+																						index,
+																						text: block.text,
+																					},
+																				],
+																			)
+																}
+																aria-label={
+																	readAloud.playing ===
+																	index
+																		? "Stop reading"
+																		: `Read aloud: ${block.text}`
+																}
+																className="flex w-12 shrink-0 items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+															>
+																{readAloud.playing ===
+																index
+																	? "■"
+																	: "▶"}
+															</button>
+														)}
+														<button
+															type="button"
+															onClick={() =>
+																toggleOriginal(
+																	index,
+																)
+															}
+															className="w-full px-4 py-3 text-left text-base leading-snug text-gray-900 hover:bg-gray-50"
+														>
+															{shownOriginals.has(
+																index,
+															) ? (
+																<span className="text-gray-500">
+																	{block.text}
+																</span>
+															) : (
+																block.translation
+															)}
+														</button>
+													</li>
+												),
+											)}
+										</ul>
+										{shareText.method && (
+											<div className="flex flex-wrap items-center gap-3">
 												<button
 													type="button"
 													onClick={() =>
-														toggleOriginal(index)
+														shareText.share(
+															translationShareText(
+																result.blocks,
+																{
+																	source: nameOf(
+																		result.sourceLanguage,
+																	),
+																	target: nameOf(
+																		result.target,
+																	),
+																},
+															),
+														)
 													}
-													className="w-full px-4 py-3 text-left text-base leading-snug text-gray-900 hover:bg-gray-50"
+													className={secondary}
 												>
-													{shownOriginals.has(
-														index,
-													) ? (
-														<span className="text-gray-500">
-															{block.text}
-														</span>
-													) : (
-														block.translation
-													)}
+													{shareText.method ===
+													"share"
+														? "Share translation"
+														: "Copy translation"}
 												</button>
-											</li>
-										))}
-									</ul>
-									{shareText.method && (
-										<div className="flex flex-wrap items-center gap-3">
-											<button
-												type="button"
-												onClick={() =>
-													shareText.share(
-														translationShareText(
-															result.blocks,
-															{
-																source: nameOf(
-																	result.sourceLanguage,
-																),
-																target: nameOf(
-																	result.target,
-																),
-															},
-														),
-													)
-												}
-												className={secondary}
-											>
-												{shareText.method === "share"
-													? "Share translation"
-													: "Copy translation"}
-											</button>
-											<span
-												aria-live="polite"
-												className="text-sm text-gray-600"
-											>
-												{shareText.note}
-											</span>
-										</div>
-									)}
-								</>
-							)}
-						</div>
-					)}
-					{step === "shared" && (
-						<p className="text-sm text-gray-600">
-							Shared photo ready. Tap Translate to read it in{" "}
-							{nameOf(target)}.
-						</p>
-					)}
-					{step === "error" && (
-						<p aria-live="polite" className="text-sm text-red-700">
-							{error}
-						</p>
-					)}
+												<span
+													aria-live="polite"
+													className="text-sm text-gray-600"
+												>
+													{shareText.note}
+												</span>
+											</div>
+										)}
+									</>
+								)}
+							</div>
+						)}
+						{step === "shared" && (
+							<p className="text-sm text-gray-600">
+								Shared photo ready. Tap Translate to read it in{" "}
+								{nameOf(target)}.
+							</p>
+						)}
+						{step === "error" && (
+							<p
+								aria-live="polite"
+								className="text-sm text-red-700"
+							>
+								{error}
+							</p>
+						)}
 
-					<div className="flex flex-wrap gap-3">
-						{step === "camera" ? (
-							<>
-								<button
-									type="button"
-									onClick={capture}
-									className={primary}
-								>
-									Take photo
-								</button>
-								<button
-									type="button"
-									onClick={reset}
-									className={secondary}
-								>
-									Cancel
-								</button>
-							</>
-						) : (
-							<>
-								{step === "shared" && photo && (
+						<div className="flex flex-wrap gap-3">
+							{step === "camera" ? (
+								<>
 									<button
 										type="button"
-										onClick={() => translate(photo)}
-										disabled={
-											!clientId || !online || opening
-										}
+										onClick={capture}
 										className={primary}
 									>
-										Translate
+										Take photo
 									</button>
-								)}
-								<button
-									type="button"
-									onClick={startCamera}
-									disabled={
-										step === "translating" ||
-										opening ||
-										!clientId ||
-										!online
-									}
-									className={
-										step === "shared" ? secondary : primary
-									}
-								>
-									{photo ? "Retake" : "Open camera"}
-								</button>
-								<button
-									type="button"
-									onClick={() => fileRef.current?.click()}
-									disabled={
-										step === "translating" ||
-										opening ||
-										!clientId ||
-										!online
-									}
-									className={secondary}
-								>
-									Choose photo
-								</button>
-							</>
-						)}
-						{/* Library or camera, the phone's own choice. */}
-						<input
-							ref={fileRef}
-							type="file"
-							accept="image/*"
-							onChange={pickFile}
-							className="hidden"
-						/>
-						{/* Camera only: for "Open camera" when getUserMedia is missing. */}
-						<input
-							ref={cameraFileRef}
-							type="file"
-							accept="image/*"
-							capture="environment"
-							onChange={pickFile}
-							className="hidden"
-						/>
-					</div>
+									<button
+										type="button"
+										onClick={reset}
+										className={secondary}
+									>
+										Cancel
+									</button>
+								</>
+							) : (
+								<>
+									{step === "shared" && photo && (
+										<button
+											type="button"
+											onClick={() => translate(photo)}
+											disabled={
+												!clientId || !online || opening
+											}
+											className={primary}
+										>
+											Translate
+										</button>
+									)}
+									<button
+										type="button"
+										onClick={startCamera}
+										disabled={
+											step === "translating" ||
+											opening ||
+											!clientId ||
+											!online
+										}
+										className={
+											step === "shared"
+												? secondary
+												: primary
+										}
+									>
+										{photo ? "Retake" : "Open camera"}
+									</button>
+									<button
+										type="button"
+										onClick={() => fileRef.current?.click()}
+										disabled={
+											step === "translating" ||
+											opening ||
+											!clientId ||
+											!online
+										}
+										className={secondary}
+									>
+										Choose photo
+									</button>
+								</>
+							)}
+							{/* Library or camera, the phone's own choice. */}
+							<input
+								ref={fileRef}
+								type="file"
+								accept="image/*"
+								onChange={pickFile}
+								className="hidden"
+							/>
+							{/* Camera only: for "Open camera" when getUserMedia is missing. */}
+							<input
+								ref={cameraFileRef}
+								type="file"
+								accept="image/*"
+								capture="environment"
+								onChange={pickFile}
+								className="hidden"
+							/>
+						</div>
 
-					<p className="text-xs text-gray-500">
-						Photos are sent to Cloudflare Workers AI to read and
-						translate, and are not stored. Limited to a few photos a
-						minute and a daily total for the whole site.
-					</p>
-				</div>
-			</section>
-		</div>
+						<p className="text-xs text-gray-500">
+							Photos are sent to Cloudflare Workers AI to read and
+							translate, and are not stored. Limited to a few
+							photos a minute and a daily total for the whole
+							site.
+						</p>
+					</div>
+				</section>
+			</div>
+		</PageTransition>
 	);
 }

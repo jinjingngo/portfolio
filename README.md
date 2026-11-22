@@ -76,6 +76,8 @@ own daily count, so they spend the shared allowance without counting toward prod
 - `src/app/api/push/*`: Web Push API (public key, subscribe, unsubscribe, send)
 - `src/app/api/translate/image`: camera translate API (Workers AI)
 - `src/app/lib/`: shared code (pure decisions are tested); `lib/server/` for Cloudflare bindings
+- Page transitions: in-site links use `NavLink` and pages wrap their content in `PageTransition`
+  (explained at `/lab/view-transitions`)
 - `tests/`: unit tests
 - `src/sw/`: the service worker (TypeScript), built to `public/sw.js` by `pnpm build:sw`
 - `public/`: static files

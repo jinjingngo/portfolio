@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { NavLink } from "@/app/components/navLink";
+import { PageTransition } from "@/app/components/pageTransition";
 import { Toggle } from "@/app/components/toggle";
 import { useClientId } from "@/app/hooks/useClientId";
 import { useOnline } from "@/app/hooks/useOnline";
@@ -113,57 +114,59 @@ export default function WebPushPage() {
 		status === "checking" || status === "working" || !clientId || !online;
 
 	return (
-		<div className="flex min-w-0 flex-1 flex-col gap-8">
-			<div>
-				<Link
-					className="text-sm underline decoration-wavy underline-offset-4"
-					href="/lab"
-				>
-					← /lab
-				</Link>
-				<h1 className="mt-5 text-4xl text-gray-900 md:text-5xl">
-					Web Push
-				</h1>
-				<p className="mt-3 max-w-2xl text-gray-600">
-					Subscribe this browser to notifications, then send a real
-					push message to test the full flow.
-				</p>
-			</div>
-
-			<section className="w-full min-w-0 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
-				<div className="flex flex-col gap-6">
-					{!online && (
-						<p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-							You&apos;re offline. Notifications need a connection
-							to turn on, off or send.
-						</p>
-					)}
-					<Toggle
-						label="Enable notifications"
-						checked={enabled}
-						disabled={busy}
-						onChange={handleOnChange}
-					/>
-					<p
-						aria-live="polite"
-						className={
-							status === "error"
-								? "text-sm text-red-700"
-								: "text-sm text-gray-600"
-						}
+		<PageTransition>
+			<div className="flex min-w-0 flex-1 flex-col gap-8">
+				<div>
+					<NavLink
+						className="text-sm underline decoration-wavy underline-offset-4"
+						href="/lab"
 					>
-						{message}
+						← /lab
+					</NavLink>
+					<h1 className="mt-5 text-4xl text-gray-900 md:text-5xl">
+						Web Push
+					</h1>
+					<p className="mt-3 max-w-2xl text-gray-600">
+						Subscribe this browser to notifications, then send a
+						real push message to test the full flow.
 					</p>
-					<button
-						type="button"
-						onClick={sendTestNotification}
-						disabled={!enabled || busy}
-						className="w-fit rounded-full bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gray-300 disabled:cursor-not-allowed disabled:opacity-40"
-					>
-						Send test notification
-					</button>
 				</div>
-			</section>
-		</div>
+
+				<section className="w-full min-w-0 max-w-2xl rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 md:p-8">
+					<div className="flex flex-col gap-6">
+						{!online && (
+							<p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+								You&apos;re offline. Notifications need a
+								connection to turn on, off or send.
+							</p>
+						)}
+						<Toggle
+							label="Enable notifications"
+							checked={enabled}
+							disabled={busy}
+							onChange={handleOnChange}
+						/>
+						<p
+							aria-live="polite"
+							className={
+								status === "error"
+									? "text-sm text-red-700"
+									: "text-sm text-gray-600"
+							}
+						>
+							{message}
+						</p>
+						<button
+							type="button"
+							onClick={sendTestNotification}
+							disabled={!enabled || busy}
+							className="w-fit rounded-full bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gray-300 disabled:cursor-not-allowed disabled:opacity-40"
+						>
+							Send test notification
+						</button>
+					</div>
+				</section>
+			</div>
+		</PageTransition>
 	);
 }
