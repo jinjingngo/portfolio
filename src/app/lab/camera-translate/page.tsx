@@ -138,11 +138,14 @@ export default function CameraTranslatePage() {
 		// before the first frame can leave play() unsettled.
 		openingRef.current = false;
 		if (mountedRef.current) setOpening(false);
-		if (!granted) {
-			// Leaving an unconfirmed shared photo: drop it, so nothing (e.g. a
-			// language change) translates it without the Translate tap.
+		// Leaving an unconfirmed shared photo: drop it, so nothing (e.g. a
+		// language change) translates it without the Translate tap.
+		const cameraFailed = (message: string) => {
 			if (step === "shared") setPhoto(null);
-			fail(
+			fail(message);
+		};
+		if (!granted) {
+			cameraFailed(
 				"Camera access was blocked. Allow it in your browser, or choose a photo instead.",
 			);
 			return;
@@ -159,7 +162,7 @@ export default function CameraTranslatePage() {
 		const [played] = await t(video.play());
 		// A play() that fails because Cancel stopped this stream isn't an error.
 		if (played || streamRef.current !== stream) return;
-		fail(
+		cameraFailed(
 			"The camera couldn't start. Try again, or choose a photo instead.",
 		);
 	};
