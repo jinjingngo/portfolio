@@ -115,8 +115,8 @@ const Findings = () => (
 			<li>
 				So the rules stay on this page only. They cover just the links
 				marked <code className={code}>{SPECULATE_ATTRIBUTE}</code>, only
-				start when you point at one, and are removed (cancelling any
-				prerender) when you leave.
+				start when you point at one, and are removed when you leave, so
+				Chrome can drop a prerender nobody used.
 			</li>
 			<li>
 				They&apos;d be worth it for plain links to static pages, for

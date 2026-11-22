@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
 	LOAD_KIND_TEXT,
 	type LoadKind,
@@ -9,8 +9,10 @@ import {
 
 type Report = { kind: LoadKind; via: string | null; shownAfterMs: number };
 
-/** Reads how this document was loaded from the browser's navigation timing. */
-const readReport = (): Report | null => {
+const noSubscription = () => () => {};
+
+/** Reads how this page was reached from the browser's navigation timing. */
+const readReport = (loadedWithDocument: boolean): Report | null => {
 	const [entry] = performance.getEntriesByType("navigation") as
 		| PerformanceNavigationTiming[]
 		| [];
@@ -21,7 +23,7 @@ const readReport = (): Report | null => {
 	const kind = loadKind({
 		activationStart,
 		type: entry.type,
-		sameDocumentUrl: entry.name === location.href,
+		loadedWithDocument,
 	});
 	return {
 		kind,
@@ -39,9 +41,17 @@ const readReport = (): Report | null => {
  */
 export const LoadReport = () => {
 	const [report, setReport] = useState<Report | null>(null);
+	// True only while hydrating the server HTML, i.e. when this page came with
+	// a newly loaded document; false for any client-side render (Link, Back).
+	const hydrating = useSyncExternalStore(
+		noSubscription,
+		() => false,
+		() => true,
+	);
+	const [loadedWithDocument] = useState(hydrating);
 
 	useEffect(() => {
-		const read = () => setReport(readReport());
+		const read = () => setReport(readReport(loadedWithDocument));
 		const prerendering = (document as { prerendering?: boolean })
 			.prerendering;
 		if (!prerendering) {
@@ -50,7 +60,7 @@ export const LoadReport = () => {
 		}
 		document.addEventListener("prerenderingchange", read, { once: true });
 		return () => document.removeEventListener("prerenderingchange", read);
-	}, []);
+	}, [loadedWithDocument]);
 
 	if (!report) return null;
 	return (

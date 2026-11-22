@@ -31,7 +31,7 @@ describe("loadKind", () => {
 	const base = {
 		activationStart: 0,
 		type: "navigate",
-		sameDocumentUrl: true,
+		loadedWithDocument: true,
 	};
 
 	it("spots a prerendered page by its activation time", () => {
@@ -48,7 +48,11 @@ describe("loadKind", () => {
 
 	it("is client-side when the document was loaded for another URL", () => {
 		assert.equal(
-			loadKind({ ...base, activationStart: 500, sameDocumentUrl: false }),
+			loadKind({
+				...base,
+				activationStart: 500,
+				loadedWithDocument: false,
+			}),
 			"client-side",
 		);
 	});

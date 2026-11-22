@@ -37,18 +37,23 @@ export type NavigationFacts = {
 	activationStart: number;
 	/** PerformanceNavigationTiming.type: "navigate", "reload", "back_forward"… */
 	type: string;
-	/** Whether the URL shown is the one the document was loaded for. */
-	sameDocumentUrl: boolean;
+	/**
+	 * Whether the page was first rendered together with its document (by
+	 * hydrating the server HTML). False when Next.js rendered it client-side,
+	 * including a Back to the document's own URL.
+	 */
+	loadedWithDocument: boolean;
 };
 
 export type LoadKind = "prerendered" | "full-load" | "client-side" | "history";
 
 /**
- * How the current page was reached. A Next.js <Link> swaps the page without
- * loading a new document, so the timing entry still names the first URL.
+ * How the current page was reached. A Next.js <Link> or Back swaps the page
+ * without loading a new document, so the document's timing says nothing
+ * about this visit.
  */
 export const loadKind = (facts: NavigationFacts): LoadKind => {
-	if (!facts.sameDocumentUrl) return "client-side";
+	if (!facts.loadedWithDocument) return "client-side";
 	if (facts.activationStart > 0) return "prerendered";
 	if (facts.type === "back_forward") return "history";
 	return "full-load";

@@ -33,7 +33,7 @@ export const SpeculationRulesScript = () => {
 	return (
 		<p className="rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-800">
 			{supported
-				? "This browser supports speculation rules: the first link will be prerendered when you point at it."
+				? "This browser supports speculation rules: it may prerender the first link when you point at it (not with Data Saver, Energy Saver or DevTools open)."
 				: "This browser ignores speculation rules, so all three links load normally."}
 		</p>
 	);
