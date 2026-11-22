@@ -10,21 +10,24 @@ export const NAV_BACK = "nav-back";
 
 export type NavDirection = typeof NAV_FORWARD | typeof NAV_BACK;
 
-/** Path segments, ignoring query, hash and trailing slashes: "/lab/x?y" → 2. */
-const depth = (path: string) =>
-	new URL(path, "https://site.invalid").pathname.split("/").filter(Boolean)
-		.length;
+/** Any origin works: only the path matters here. */
+const BASE = "https://site.invalid";
 
-const pathOf = (path: string) =>
-	new URL(path, "https://site.invalid").pathname.replace(/\/+$/, "") || "/";
+/** A path's segments, ignoring query, hash and trailing slashes: "/lab/x?y" → ["lab", "x"]. */
+const segments = (url: URL) => url.pathname.split("/").filter(Boolean);
 
 /**
  * The direction from `from` to `to`, or null for no directional animation
  * (same page, or a sibling at the same depth).
  */
 export const navDirection = (from: string, to: string): NavDirection | null => {
-	if (pathOf(from) === pathOf(to)) return null;
-	const change = depth(to) - depth(from);
+	// A relative `to` ("#top", "?tab=2", "x") is relative to the current page.
+	const current = new URL(from, BASE);
+	const target = new URL(to, current);
+	const fromPath = segments(current);
+	const toPath = segments(target);
+	if (fromPath.join("/") === toPath.join("/")) return null;
+	const change = toPath.length - fromPath.length;
 	if (change > 0) return NAV_FORWARD;
 	if (change < 0) return NAV_BACK;
 	return null;

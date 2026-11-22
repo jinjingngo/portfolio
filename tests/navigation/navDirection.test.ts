@@ -35,6 +35,15 @@ describe("navDirection", () => {
 	});
 });
 
+describe("navDirection with relative links", () => {
+	it("resolves them against the current page", () => {
+		assert.equal(navDirection("/lab/x", "#top"), null);
+		assert.equal(navDirection("/lab/x", "?tab=2"), null);
+		assert.equal(navDirection("/lab/", "x"), NAV_FORWARD);
+		assert.equal(navDirection("/lab/x", ".."), NAV_BACK);
+	});
+});
+
 describe("transitionTypesFor", () => {
 	it("gives Link's transitionTypes, empty when nothing should animate", () => {
 		assert.deepEqual(transitionTypesFor("/", "/lab"), [NAV_FORWARD]);
