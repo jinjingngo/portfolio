@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { t } from "try";
 import { useClientId } from "@/app/hooks/useClientId";
 import { useOnline } from "@/app/hooks/useOnline";
 import { useReadAloud } from "@/app/hooks/useReadAloud";
@@ -127,32 +128,40 @@ export default function CameraTranslatePage() {
 		if (openingRef.current || streamRef.current) return;
 		openingRef.current = true;
 		setOpening(true);
-		try {
-			const stream = await navigator.mediaDevices.getUserMedia({
+		const [granted, , stream] = await t(async () =>
+			navigator.mediaDevices.getUserMedia({
 				video: { facingMode: { ideal: "environment" } },
 				audio: false,
-			});
-			if (!mountedRef.current) {
-				stopTracks(stream);
-				return;
-			}
-			streamRef.current = stream;
-			setStep("camera");
-			const video = videoRef.current;
-			if (!video) return;
-			video.srcObject = stream;
-			await video.play();
-		} catch {
+			}),
+		);
+		// Opening ends with the permission answer, not with play(): a Cancel
+		// before the first frame can leave play() unsettled.
+		openingRef.current = false;
+		if (mountedRef.current) setOpening(false);
+		if (!granted) {
 			// Leaving an unconfirmed shared photo: drop it, so nothing (e.g. a
 			// language change) translates it without the Translate tap.
 			if (step === "shared") setPhoto(null);
 			fail(
 				"Camera access was blocked. Allow it in your browser, or choose a photo instead.",
 			);
-		} finally {
-			openingRef.current = false;
-			if (mountedRef.current) setOpening(false);
+			return;
 		}
+		if (!mountedRef.current) {
+			stopTracks(stream);
+			return;
+		}
+		streamRef.current = stream;
+		setStep("camera");
+		const video = videoRef.current;
+		if (!video) return;
+		video.srcObject = stream;
+		const [played] = await t(video.play());
+		// A play() that fails because Cancel stopped this stream isn't an error.
+		if (played || streamRef.current !== stream) return;
+		fail(
+			"The camera couldn't start. Try again, or choose a photo instead.",
+		);
 	};
 
 	const translate = async (
